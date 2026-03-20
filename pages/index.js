@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { FaUser, FaBirthdayCake, FaMapMarkerAlt, FaEnvelope, FaGlobe, FaGithub, FaInstagram, FaTwitter, FaLinkedin, FaFacebook, FaTiktok, FaYoutube, FaDiscord, FaTelegram, FaTwitch, FaSpotify, FaMedium, FaBehance, FaDribbble, FaPinterest, FaReddit } from "react-icons/fa";
+
+const predefinedInterests = ["Singing","Dancing","Reading","Gaming","Traveling","Photography","Writing","Music","Movies","Art","Fitness"];
+const predefinedHobbies = ["Sports","Cooking","Traveling","Gardening","Yoga","Meditation","Gaming","Volunteering","Blogging","Photography"];
+const predefinedSkills = ["Coding","Design","Marketing","Writing","Photography","Video Editing","UI/UX","Public Speaking","Management","Social Media"];
 
 export default function Home() {
   const [form, setForm] = useState({
@@ -6,32 +11,19 @@ export default function Home() {
     name: "",
     dob: "",
     location: "",
-    aboutme: "",
+    aboutme: {
+      bio: "",
+      interests: [],
+      hobbies: [],
+      skills: []
+    },
     avatar: "",
-    banner: "",
     socialProfiles: {
-      email: "",
-      whatsapp: "",
-      instagram: "",
-      facebook: "",
-      github: "",
-      snapchat: "",
-      youtube: "",
-      twitter: "",
-      linkedin: "",
-      tiktok: "",
-      discord: "",
-      telegram: "",
-      twitch: "",
-      spotify: "",
-      medium: "",
-      devto: "",
-      behance: "",
-      dribbble: "",
-      pinterest: "",
-      reddit: "",
-      threads: "",
-      bluesky: ""
+      email: "", whatsapp: "", instagram: "", facebook: "", github: "",
+      snapchat: "", youtube: "", twitter: "", linkedin: "", tiktok: "",
+      discord: "", telegram: "", twitch: "", spotify: "", medium: "",
+      devto: "", behance: "", dribbble: "", pinterest: "", reddit: "",
+      threads: "", bluesky: ""
     },
     links: []
   });
@@ -39,299 +31,160 @@ export default function Home() {
   const [newLink, setNewLink] = useState({ title: "", url: "" });
 
   const handleSocialChange = (platform, value) => {
-    setForm({
-      ...form,
-      socialProfiles: {
-        ...form.socialProfiles,
-        [platform]: value
-      }
-    });
+    setForm({ ...form, socialProfiles: { ...form.socialProfiles, [platform]: value } });
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "YOUR_CLOUDINARY_PRESET");
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload",
+      { method: "POST", body: formData }
+    );
+    const data = await res.json();
+    setForm({ ...form, avatar: data.secure_url });
   };
 
   const addLink = () => {
     if (newLink.title && newLink.url) {
-      setForm({
-        ...form,
-        links: [...form.links, { ...newLink, id: Date.now() }]
-      });
+      setForm({ ...form, links: [...form.links, { ...newLink, id: Date.now() }] });
       setNewLink({ title: "", url: "" });
     }
   };
 
   const removeLink = (id) => {
+    setForm({ ...form, links: form.links.filter(l => l.id !== id) });
+  };
+
+  const toggleTag = (type, tag) => {
+    const current = form.aboutme[type];
     setForm({
       ...form,
-      links: form.links.filter(link => link.id !== id)
+      aboutme: {
+        ...form.aboutme,
+        [type]: current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag]
+      }
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const res = await fetch("/api/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(form)
     });
-
     const data = await res.json();
-
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      alert(data.error);
-    }
+    if (data.url) window.location.href = data.url;
+    else alert(data.error);
   };
 
-  const socialCategories = [
-    {
-      name: "Contact",
-      platforms: ["email", "whatsapp"]
-    },
-    {
-      name: "Social Media",
-      platforms: ["instagram", "facebook", "twitter", "tiktok", "snapchat", "threads", "bluesky"]
-    },
-    {
-      name: "Professional",
-      platforms: ["github", "linkedin", "medium", "devto", "behance", "dribbble"]
-    },
-    {
-      name: "Communication",
-      platforms: ["discord", "telegram", "reddit"]
-    },
-    {
-      name: "Content",
-      platforms: ["youtube", "twitch", "spotify", "pinterest"]
-    }
+  const socialPlatforms = [
+    { platform: "email", icon: <FaEnvelope /> }, { platform: "whatsapp", icon: <FaGlobe /> },
+    { platform: "instagram", icon: <FaInstagram /> }, { platform: "facebook", icon: <FaFacebook /> },
+    { platform: "twitter", icon: <FaTwitter /> }, { platform: "github", icon: <FaGithub /> },
+    { platform: "linkedin", icon: <FaLinkedin /> }, { platform: "tiktok", icon: <FaTiktok /> },
+    { platform: "youtube", icon: <FaYoutube /> }, { platform: "discord", icon: <FaDiscord /> },
+    { platform: "telegram", icon: <FaTelegram /> }, { platform: "twitch", icon: <FaTwitch /> },
+    { platform: "spotify", icon: <FaSpotify /> }, { platform: "medium", icon: <FaMedium /> },
+    { platform: "behance", icon: <FaBehance /> }, { platform: "dribbble", icon: <FaDribbble /> },
+    { platform: "pinterest", icon: <FaPinterest /> }, { platform: "reddit", icon: <FaReddit /> }
   ];
-
-  const platformLabels = {
-    email: "Email",
-    whatsapp: "WhatsApp",
-    instagram: "Instagram",
-    facebook: "Facebook",
-    github: "GitHub",
-    snapchat: "Snapchat",
-    youtube: "YouTube",
-    twitter: "Twitter/X",
-    linkedin: "LinkedIn",
-    tiktok: "TikTok",
-    discord: "Discord",
-    telegram: "Telegram",
-    twitch: "Twitch",
-    spotify: "Spotify",
-    medium: "Medium",
-    devto: "Dev.to",
-    behance: "Behance",
-    dribbble: "Dribbble",
-    pinterest: "Pinterest",
-    reddit: "Reddit",
-    threads: "Threads",
-    bluesky: "Bluesky"
-  };
-
-  const platformPlaceholders = {
-    email: "your@email.com",
-    whatsapp: "+1234567890",
-    instagram: "@username",
-    facebook: "username",
-    github: "username",
-    snapchat: "username",
-    youtube: "@username",
-    twitter: "@username",
-    linkedin: "username",
-    tiktok: "@username",
-    discord: "username#0000",
-    telegram: "@username",
-    twitch: "username",
-    spotify: "username",
-    medium: "@username",
-    devto: "username",
-    behance: "username",
-    dribbble: "username",
-    pinterest: "username",
-    reddit: "username",
-    threads: "@username",
-    bluesky: "@username"
-  };
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: 20 }}>
-      <h1 style={{ textAlign: "center" }}>Create Your Linktree Profile</h1>
+      <h1 style={{ textAlign: "center" }}>Create Your Profile</h1>
       <form onSubmit={handleSubmit}>
         {/* Basic Info */}
-        <div style={{ marginBottom: 20, padding: 20, border: "1px solid #eaeaea", borderRadius: 10, background: "white" }}>
-          <h2>Basic Information</h2>
-          
-          <div style={{ marginBottom: 15 }}>
-            <label>Username *</label>
-            <input
-              placeholder="username"
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
-              required
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
-            <small>Letters, numbers, underscores, and hyphens only</small>
+        <div style={{ padding: 20, border: "1px solid #eaeaea", borderRadius: 10, marginBottom: 20 }}>
+          <h2>Basic Info</h2>
+          <div><FaUser /> <input placeholder="Username" required onChange={e=>setForm({...form, username:e.target.value})} /></div>
+          <div><FaUser /> <input placeholder="Full Name" required onChange={e=>setForm({...form, name:e.target.value})} /></div>
+          <div><FaBirthdayCake /> <input type="date" onChange={e=>setForm({...form, dob:e.target.value})} /></div>
+          <div><FaMapMarkerAlt /> <input placeholder="Location" onChange={e=>setForm({...form, location:e.target.value})} /></div>
+          <div>
+            <label>Avatar</label>
+            <input type="file" accept="image/*" onChange={handleImageUpload} />
+            {form.avatar && <img src={form.avatar} alt="avatar" width={100} style={{borderRadius:"50%"}} />}
+          </div>
+        </div>
+
+        {/* About Me with Tags */}
+        <div style={{ padding: 20, border: "1px solid #eaeaea", borderRadius: 10, marginBottom: 20 }}>
+          <h2>About Me</h2>
+          <textarea placeholder="Bio" rows={3} onChange={e=>setForm({...form, aboutme:{...form.aboutme, bio:e.target.value}})} style={{width:"100%",marginBottom:10}} />
+
+          <div>
+            <h4>Interests</h4>
+            {predefinedInterests.map(tag => (
+              <span key={tag} onClick={()=>toggleTag("interests", tag)} style={{
+                cursor:"pointer",
+                padding:"5px 10px",
+                margin:5,
+                borderRadius:20,
+                backgroundColor: form.aboutme.interests.includes(tag) ? "#0070f3":"#eee",
+                color: form.aboutme.interests.includes(tag) ? "white":"black"
+              }}>{tag}</span>
+            ))}
           </div>
 
-          <div style={{ marginBottom: 15 }}>
-            <label>Full Name *</label>
-            <input
-              placeholder="John Doe"
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
+          <div>
+            <h4>Hobbies</h4>
+            {predefinedHobbies.map(tag => (
+              <span key={tag} onClick={()=>toggleTag("hobbies", tag)} style={{
+                cursor:"pointer",
+                padding:"5px 10px",
+                margin:5,
+                borderRadius:20,
+                backgroundColor: form.aboutme.hobbies.includes(tag) ? "#0070f3":"#eee",
+                color: form.aboutme.hobbies.includes(tag) ? "white":"black"
+              }}>{tag}</span>
+            ))}
           </div>
 
-          <div style={{ marginBottom: 15 }}>
-            <label>Date of Birth</label>
-            <input
-              type="date"
-              onChange={(e) => setForm({ ...form, dob: e.target.value })}
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 15 }}>
-            <label>Location</label>
-            <input
-              placeholder="New York, USA"
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 15 }}>
-            <label>About Me</label>
-            <textarea
-              placeholder="Tell us about yourself..."
-              rows="4"
-              onChange={(e) => setForm({ ...form, aboutme: e.target.value })}
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 15 }}>
-            <label>Avatar URL (optional)</label>
-            <input
-              placeholder="https://example.com/avatar.jpg"
-              onChange={(e) => setForm({ ...form, avatar: e.target.value })}
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 15 }}>
-            <label>Banner URL (optional)</label>
-            <input
-              placeholder="https://example.com/banner.jpg"
-              onChange={(e) => setForm({ ...form, banner: e.target.value })}
-              style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-            />
+          <div>
+            <h4>Skills</h4>
+            {predefinedSkills.map(tag => (
+              <span key={tag} onClick={()=>toggleTag("skills", tag)} style={{
+                cursor:"pointer",
+                padding:"5px 10px",
+                margin:5,
+                borderRadius:20,
+                backgroundColor: form.aboutme.skills.includes(tag) ? "#0070f3":"#eee",
+                color: form.aboutme.skills.includes(tag) ? "white":"black"
+              }}>{tag}</span>
+            ))}
           </div>
         </div>
 
         {/* Social Profiles */}
-        {socialCategories.map((category) => (
-          <div key={category.name} style={{ marginBottom: 20, padding: 20, border: "1px solid #eaeaea", borderRadius: 10, background: "white" }}>
-            <h2>{category.name}</h2>
-            
-            {category.platforms.map((platform) => (
-              <div key={platform} style={{ marginBottom: 15 }}>
-                <label>{platformLabels[platform]}</label>
-                <input
-                  placeholder={platformPlaceholders[platform]}
-                  value={form.socialProfiles[platform]}
-                  onChange={(e) => handleSocialChange(platform, e.target.value)}
-                  style={{ width: "100%", padding: 8, marginTop: 5, border: "1px solid #ddd", borderRadius: 5 }}
-                />
-              </div>
-            ))}
-          </div>
-        ))}
-
-        {/* Custom Links */}
-        <div style={{ marginBottom: 20, padding: 20, border: "1px solid #eaeaea", borderRadius: 10, background: "white" }}>
-          <h2>Custom Links</h2>
-          
-          <div style={{ marginBottom: 15 }}>
-            <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-              <input
-                placeholder="Link Title (e.g., My Portfolio)"
-                value={newLink.title}
-                onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
-                style={{ flex: 1, padding: 8, border: "1px solid #ddd", borderRadius: 5 }}
-              />
-              <input
-                placeholder="URL"
-                value={newLink.url}
-                onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
-                style={{ flex: 2, padding: 8, border: "1px solid #ddd", borderRadius: 5 }}
-              />
-              <button 
-                type="button"
-                onClick={addLink}
-                style={{ padding: "8px 20px", cursor: "pointer", background: "#0070f3", color: "white", border: "none", borderRadius: 5 }}
-              >
-                Add
-              </button>
+        <div style={{ padding: 20, border: "1px solid #eaeaea", borderRadius: 10, marginBottom: 20 }}>
+          <h2>Social Profiles</h2>
+          {socialPlatforms.map(p => (
+            <div key={p.platform} style={{ display:"flex", alignItems:"center", marginBottom:10 }}>
+              <span style={{marginRight:10}}>{p.icon}</span>
+              <input placeholder={p.platform} value={form.socialProfiles[p.platform]} onChange={e=>handleSocialChange(p.platform,e.target.value)} style={{flex:1}} />
             </div>
-          </div>
-
-          {form.links.length > 0 && (
-            <div>
-              <h3>Your Links:</h3>
-              {form.links.map((link) => (
-                <div key={link.id} style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between", 
-                  alignItems: "center",
-                  padding: "10px",
-                  marginBottom: "5px",
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "5px"
-                }}>
-                  <div>
-                    <strong>{link.title}</strong>
-                    <br />
-                    <small style={{ color: "#666" }}>{link.url}</small>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeLink(link.id)}
-                    style={{ 
-                      padding: "5px 10px", 
-                      backgroundColor: "#ff4444",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "3px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
 
-        <button 
-          type="submit" 
-          style={{
-            width: "100%",
-            padding: 12,
-            backgroundColor: "#0070f3",
-            color: "white",
-            border: "none",
-            borderRadius: 5,
-            cursor: "pointer",
-            fontSize: "16px"
-          }}
-        >
-          Create Profile
-        </button>
+        {/* Custom Links */}
+        <div style={{ padding: 20, border: "1px solid #eaeaea", borderRadius: 10, marginBottom: 20 }}>
+          <h2>Custom Links</h2>
+          <input placeholder="Link Title" value={newLink.title} onChange={e=>setNewLink({...newLink,title:e.target.value})} />
+          <input placeholder="URL" value={newLink.url} onChange={e=>setNewLink({...newLink,url:e.target.value})} />
+          <button type="button" onClick={addLink}>Add Link</button>
+          <ul>
+            {form.links.map(l=><li key={l.id}>{l.title} - {l.url} <button type="button" onClick={()=>removeLink(l.id)}>Remove</button></li>)}
+          </ul>
+        </div>
+
+        <button type="submit" style={{width:"100%", padding:12, background:"#0070f3", color:"white"}}>Create Profile</button>
       </form>
     </div>
   );
