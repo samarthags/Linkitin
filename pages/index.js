@@ -366,6 +366,8 @@ export default function ProfileCreator() {
   const [pubUser,   setPubUser]  = useState("");
   const [copied,    setCopied]   = useState(false);
   const [showShare, setShowShare]= useState(false);
+  const [showDelete,setShowDelete]=useState(false);
+  const [deleting,  setDeleting]  =useState(false);
   const fileRef = useRef(null);
 
   /* ── Mount: read localStorage ── */
@@ -488,25 +490,29 @@ export default function ProfileCreator() {
 
   const [pubError,setPubError]=useState("");
 
-  /* ── Publish — always POST /api/create (must be upsert on server side) ── */
+  /* ── Publish ──
+     _isEditing:true  = updating own profile  → API skips username-taken check, does update
+     _isEditing:false = new profile creation  → API blocks if username already exists
+  */
   const handlePublish=async()=>{
     setSubmitting(true);
     setPubError("");
-    const aboutme=genBio||form.bio;
-    const origin=typeof window!=="undefined"?window.location.origin:"https://mywebsammu.vercel.app";
-    const pUrl=`${origin}/${form.username}`;
-    const pObj={...form,aboutme,savedAt:new Date().toISOString(),publishedUrl:pUrl};
-
+    const aboutme = genBio||form.bio;
+    const origin  = typeof window!=="undefined" ? window.location.origin : "https://mywebsammu.vercel.app";
+    const pUrl    = `${origin}/${form.username}`;
+    const pObj    = {...form, aboutme, savedAt:new Date().toISOString(), publishedUrl:pUrl};
+    // If a saved profile exists with the SAME username → this is an edit, not a new creation
+    const isEditing = !!(saved && saved.username === form.username);
     try{
-      const res=await fetch("/api/create",{
+      const res = await fetch("/api/create",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({...form,aboutme}),
+        body:JSON.stringify({...form, aboutme, _isEditing: isEditing}),
       });
       let data={};
       try{data=await res.json();}catch(_){}
       if(!res.ok){
-        setPubError(data?.error||`Server error (${res.status}) — check your /api/create.js`);
+        setPubError(data?.error||`Error (${res.status})`);
         setSubmitting(false);
         return;
       }
@@ -516,7 +522,7 @@ export default function ProfileCreator() {
       setPubUser(form.username);
       setView("success");
     }catch(e){
-      setPubError("Network error — could not reach the server. Check your Vercel deployment.");
+      setPubError("Network error — please try again.");
       setSubmitting(false);
     }finally{
       setSubmitting(false);
@@ -541,6 +547,26 @@ export default function ProfileCreator() {
 
   // Always open our custom share sheet — never the browser/OS native share
   const openShare=()=>{ setShowShare(true); };
+
+  /* ── Delete profile ── */
+  const handleDelete=async()=>{
+    setDeleting(true);
+    try{
+      await fetch("/api/delete",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({username:saved?.username}),
+      });
+    }catch(_){}
+    // Always clear local regardless of server response
+    try{localStorage.removeItem("mws_v6");}catch(_){}
+    setSaved(null);
+    setForm(EMPTY);
+    setGenBio("");
+    setShowDelete(false);
+    setDeleting(false);
+    setView("form");
+  };
 
   /* ── Small helpers ── */
   const Lbl=({children,req})=><div className="lbl">{children}{req&&<span style={{color:"#ef4444",marginLeft:3}}>*</span>}</div>;
@@ -597,17 +623,36 @@ export default function ProfileCreator() {
               </div>
             </div>
 
-            {/* 4 actions */}
+            {/* Actions */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
               <button className="btn btn-p" style={{width:"100%"}} onClick={()=>window.open(url,"_blank")}><i className="fas fa-arrow-up-right-from-square"/> View</button>
               <button className="btn btn-g" style={{width:"100%"}} onClick={openShare}><i className="fas fa-share-nodes"/> Share</button>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
               <button className="btn btn-s" style={{width:"100%"}} onClick={()=>{navigator.clipboard?.writeText(url).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2200);}}>
                 <i className={`fas fa-${copied?"check":"copy"}`} style={{color:copied?"#10b981":undefined}}/> {copied?"Copied!":"Copy Link"}
               </button>
               <button className="btn btn-s" style={{width:"100%"}} onClick={()=>startEdit(saved)}><i className="fas fa-pen"/> Edit Profile</button>
             </div>
+            {/* Delete */}
+            {!showDelete?(
+              <button className="btn" style={{width:"100%",background:"transparent",color:"#ef4444",border:"1.5px solid #fca5a5",fontSize:13,padding:"9px 16px"}}
+                onClick={()=>setShowDelete(true)}>
+                <i className="fas fa-trash"/> Delete Profile
+              </button>
+            ):(
+              <div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:12,padding:"16px",textAlign:"center"}}>
+                <div style={{fontWeight:700,color:"#b91c1c",marginBottom:6}}>Delete this profile?</div>
+                <div style={{fontSize:13,color:"#6b7280",marginBottom:14}}>This will permanently remove your profile. This cannot be undone.</div>
+                <div style={{display:"flex",gap:10}}>
+                  <button className="btn btn-s" style={{flex:1,fontSize:13}} onClick={()=>setShowDelete(false)}>Cancel</button>
+                  <button className="btn" style={{flex:1,fontSize:13,background:"#ef4444",color:"#fff"}}
+                    onClick={handleDelete} disabled={deleting}>
+                    {deleting?<><i className="fas fa-spinner spin"/> Deleting...</>:<><i className="fas fa-trash"/> Yes, Delete</>}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <Footer/>
