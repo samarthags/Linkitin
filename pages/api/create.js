@@ -1,3 +1,4 @@
+// pages/api/create.js
 import clientPromise from "../../lib/mongodb";
 
 export default async function handler(req, res) {
@@ -5,16 +6,17 @@ export default async function handler(req, res) {
     return res.status(405).end();
   }
 
-  const { 
-    username, 
-    name, 
+  const {
+    username,
+    name,
     dob,
     location,
+    bio,
     aboutme,
     avatar,
-    banner,
     socialProfiles,
-    links
+    links,
+    interests
   } = req.body;
 
   if (!username || !name) {
@@ -23,8 +25,8 @@ export default async function handler(req, res) {
 
   const usernameRegex = /^[a-zA-Z0-9_-]+$/;
   if (!usernameRegex.test(username)) {
-    return res.status(400).json({ 
-      error: "Username can only contain letters, numbers, underscores, and hyphens" 
+    return res.status(400).json({
+      error: "Username can only contain letters, numbers, underscores, and hyphens"
     });
   }
 
@@ -32,54 +34,46 @@ export default async function handler(req, res) {
     const client = await clientPromise;
     const db = client.db(process.env.DB_NAME);
 
-    const existing = await db.collection("users").findOne({ 
-      username: { $regex: new RegExp(`^${username}$`, 'i') } 
-    });
-    
-    if (existing) {
-      return res.status(400).json({ error: "Username already taken" });
-    }
+    const uname = username.toLowerCase();
 
-    await db.collection("users").insertOne({
-      username: username.toLowerCase(),
-      name,
-      dob: dob || null,
-      location: location || "",
-      aboutme: aboutme || "",
-      avatar: avatar || "",
-      banner: banner || "",
-      socialProfiles: socialProfiles || {
-        email: "",
-        whatsapp: "",
-        instagram: "",
-        facebook: "",
-        github: "",
-        snapchat: "",
-        youtube: "",
-        twitter: "",
-        linkedin: "",
-        tiktok: "",
-        discord: "",
-        telegram: "",
-        twitch: "",
-        spotify: "",
-        medium: "",
-        devto: "",
-        behance: "",
-        dribbble: "",
-        pinterest: "",
-        reddit: "",
-        threads: "",
-        bluesky: ""
+    // findOneAndUpdate with upsert:true
+    //   → If username EXISTS  : updates all fields  (fixes the "no change on edit" bug)
+    //   → If username is NEW  : creates it fresh
+    // This replaces the old insertOne + "username already taken" block.
+    await db.collection("users").findOneAndUpdate(
+      { username: uname },
+      {
+        $set: {
+          username:       uname,
+          name:           name             || "",
+          dob:            dob              || null,
+          location:       location         || "",
+          bio:            bio              || "",
+          aboutme:        aboutme          || "",
+          avatar:         avatar           || "",
+          socialProfiles: socialProfiles   || {},
+          links:          links            || [],
+          interests:      interests        || {},
+          updatedAt:      new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),  // only written on first create
+        },
       },
-      links: links || [],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+      {
+        upsert: true,            // create if not found
+        returnDocument: "after",
+      }
+    );
 
-    res.status(200).json({ url: `/${username.toLowerCase()}` });
+    // Build full URL from request host so it works on any domain
+    const host     = req.headers.host || "mywebsammu.vercel.app";
+    const protocol = host.startsWith("localhost") ? "http" : "https";
+    const base     = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`;
+
+    return res.status(200).json({ url: `${base}/${uname}` });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Database error" });
+    console.error("[/api/create]", err);
+    return res.status(500).json({ error: "Database error" });
   }
 }
