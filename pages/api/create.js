@@ -1,85 +1,83 @@
-import clientPromise from "../../lib/mongodb";
+// pages/api/create.js
+// POST /api/create
+// Creates a new profile. If username already exists, updates it (upsert).
+// This ensures the update flow always works even if /api/update isn't wired up.
+
+import path from "path";
+import fs from "fs";
+
+const DATA_FILE = path.join(process.cwd(), "data", "profiles.json");
+
+function readProfiles() {
+  try {
+    if (!fs.existsSync(DATA_FILE)) return {};
+    const raw = fs.readFileSync(DATA_FILE, "utf-8");
+    return JSON.parse(raw);
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeProfiles(profiles) {
+  const dir = path.dirname(DATA_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(DATA_FILE, JSON.stringify(profiles, null, 2));
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).end();
-  }
-
-  const { 
-    username, 
-    name, 
-    dob,
-    location,
-    aboutme,
-    avatar,
-    banner,
-    socialProfiles,
-    links
-  } = req.body;
-
-  if (!username || !name) {
-    return res.status(400).json({ error: "Missing fields" });
-  }
-
-  const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-  if (!usernameRegex.test(username)) {
-    return res.status(400).json({ 
-      error: "Username can only contain letters, numbers, underscores, and hyphens" 
-    });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const client = await clientPromise;
-    const db = client.db(process.env.DB_NAME);
+    const {
+      username, name, dob, location, bio, aboutme, avatar,
+      socialProfiles, links, interests,
+    } = req.body;
 
-    const existing = await db.collection("users").findOne({ 
-      username: { $regex: new RegExp(`^${username}$`, 'i') } 
-    });
-    
-    if (existing) {
-      return res.status(400).json({ error: "Username already taken" });
+    if (!username || !name) {
+      return res.status(400).json({ error: "Username and name are required" });
     }
 
-    await db.collection("users").insertOne({
-      username: username.toLowerCase(),
-      name,
-      dob: dob || null,
-      location: location || "",
-      aboutme: aboutme || "",
-      avatar: avatar || "",
-      banner: banner || "",
-      socialProfiles: socialProfiles || {
-        email: "",
-        whatsapp: "",
-        instagram: "",
-        facebook: "",
-        github: "",
-        snapchat: "",
-        youtube: "",
-        twitter: "",
-        linkedin: "",
-        tiktok: "",
-        discord: "",
-        telegram: "",
-        twitch: "",
-        spotify: "",
-        medium: "",
-        devto: "",
-        behance: "",
-        dribbble: "",
-        pinterest: "",
-        reddit: "",
-        threads: "",
-        bluesky: ""
-      },
-      links: links || [],
-      createdAt: new Date(),
-      updatedAt: new Date()
+    // Sanitise username
+    const safeUsername = username.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    if (!safeUsername) {
+      return res.status(400).json({ error: "Invalid username" });
+    }
+
+    const profiles = readProfiles();
+    const exists = !!profiles[safeUsername];
+
+    // Upsert — create or update
+    profiles[safeUsername] = {
+      username:       safeUsername,
+      name:           name       || "",
+      dob:            dob        || "",
+      location:       location   || "",
+      bio:            bio        || "",
+      aboutme:        aboutme    || "",
+      avatar:         avatar     || "",
+      socialProfiles: socialProfiles || {},
+      links:          links          || [],
+      interests:      interests      || {},
+      createdAt:      profiles[safeUsername]?.createdAt || new Date().toISOString(),
+      updatedAt:      new Date().toISOString(),
+    };
+
+    writeProfiles(profiles);
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://mywebsam.site";
+    const url = `${baseUrl}/${safeUsername}`;
+
+    return res.status(200).json({
+      url,
+      username: safeUsername,
+      created:  !exists,
+      updated:  exists,
     });
 
-    res.status(200).json({ url: `/${username.toLowerCase()}` });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Database error" });
+    console.error("Create/update error:", err);
+    return res.status(500).json({ error: "Failed to save profile" });
   }
 }
