@@ -10,7 +10,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 let _booted = false;
 
 const CSS_CONTENT = `
-    s.textContent = `
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: 'Inter', sans-serif; background: #f0f2f5; color: #111827; }
 
