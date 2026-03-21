@@ -251,9 +251,14 @@ const ALL_SKILLS = [
   "Graphic Design","Brand Design","Logo Design","Interior Design","Fashion Design",
 ];
 
+
+
+
+
 const EMPTY = {
   username:"",name:"",dob:"",location:"",bio:"",avatar:"",
   socialProfiles:{},links:[],
+  favSong:"",favArtist:"",favSongUrl:"",favSongTrackId:"",
   interests:{role:"",hobbies:[],sports:[],vibes:[],music:[],passions:[],skills:[]},
 };
 
@@ -306,9 +311,7 @@ function Topbar({right}) {
   return (
     <div className="topbar">
       <a href="https://mywebsam.site/" target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:8,textDecoration:"none"}}>
-        <div style={{width:28,height:28,borderRadius:8,background:AC,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <i className="fas fa-link" style={{color:"#fff",fontSize:12}}/>
-        </div>
+        <img src="/icon.png" alt="mywebsam" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
         <span style={{fontWeight:800,fontSize:15,color:"#111827",letterSpacing:"-0.01em"}}>mywebsam</span>
       </a>
       {right}
@@ -340,6 +343,123 @@ function SearchableTags({label, items, selected, onToggle}) {
         })}
         {filtered.length===0&&<div style={{fontSize:13,color:"#adb5c0",padding:"8px 0"}}>No results for "{q}"</div>}
       </div>
+    </div>
+  );
+}
+
+
+/* ─── Spotify Search Component ─── */
+function SpotifySearch({ value, trackId, onSelect, onClear }) {
+  const [query,    setQuery]   = useState("");
+  const [results,  setResults] = useState([]);
+  const [loading,  setLoading] = useState(false);
+  const [focused,  setFocused] = useState(false);
+  const [timer,    setTimer]   = useState(null);
+  const wrapRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const search = (q) => {
+    if (!q.trim() || q.length < 2) { setResults([]); return; }
+    setLoading(true);
+    clearTimeout(timer);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/spotify-search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setResults(data.tracks || []);
+      } catch (_) {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+    setTimer(t);
+  };
+
+  // If a track is already selected, show it
+  if (trackId && value) {
+    return (
+      <div style={{background:"#f0edff",border:"1.5px solid #c4b5fd",borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:44,height:44,borderRadius:8,background:"#1DB954",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#fff",flexShrink:0}}>
+          <i className="fab fa-spotify"/>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,fontSize:14,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value}</div>
+          <div style={{fontSize:12,color:"#6b7280",marginTop:1}}>on Spotify</div>
+        </div>
+        <button type="button" onClick={onClear}
+          style={{background:"none",border:"none",cursor:"pointer",color:"#9ca3af",fontSize:16,padding:"4px",flexShrink:0}}>
+          <i className="fas fa-times"/>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={wrapRef} style={{position:"relative"}}>
+      <div style={{position:"relative"}}>
+        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#1DB954",fontSize:14,pointerEvents:"none"}}>
+          <i className="fab fa-spotify"/>
+        </span>
+        {loading && (
+          <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:"#adb5c0",fontSize:13,pointerEvents:"none"}}>
+            <i className="fas fa-spinner spin"/>
+          </span>
+        )}
+        <input
+          className="inp"
+          style={{paddingLeft:34,paddingRight:36}}
+          placeholder="Search for a song on Spotify..."
+          value={query}
+          onFocus={()=>setFocused(true)}
+          onChange={e=>{ setQuery(e.target.value); search(e.target.value); }}
+        />
+      </div>
+
+      {/* Dropdown results */}
+      {focused && results.length > 0 && (
+        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e9eaf0",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,maxHeight:280,overflowY:"auto"}}>
+          {results.map(track => (
+            <div key={track.id}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",transition:"background .12s",borderBottom:"1px solid #f5f5f5"}}
+              onMouseDown={e=>e.preventDefault()}
+              onClick={()=>{
+                onSelect(track);
+                setQuery("");
+                setResults([]);
+                setFocused(false);
+              }}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8f7ff"}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+            >
+              {track.image
+                ? <img src={track.image} alt="" style={{width:40,height:40,borderRadius:6,objectFit:"cover",flexShrink:0}}/>
+                : <div style={{width:40,height:40,borderRadius:6,background:"#1DB954",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#fff",flexShrink:0}}><i className="fab fa-spotify"/></div>
+              }
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:13,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{track.name}</div>
+                <div style={{fontSize:12,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{track.artist}</div>
+              </div>
+              <i className="fas fa-plus" style={{color:"#6C63FF",fontSize:12,flexShrink:0}}/>
+            </div>
+          ))}
+        </div>
+      )}
+      {focused && query.length >= 2 && results.length === 0 && !loading && (
+        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e9eaf0",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,padding:"16px",textAlign:"center",color:"#9ca3af",fontSize:13}}>
+          No songs found for "{query}"
+        </div>
+      )}
     </div>
   );
 }
@@ -822,12 +942,31 @@ export default function ProfileCreator() {
                 <div><Lbl>Date of Birth</Lbl><input className="inp" type="date" value={form.dob} onChange={e=>setField("dob",e.target.value)}/></div>
                 <div><Lbl>Location</Lbl><input className="inp" placeholder="City, Country" value={form.location} onChange={e=>setField("location",e.target.value)}/></div>
               </div>
-              <div>
+              <div style={{marginBottom:14}}>
                 <Lbl>Short Bio <span style={{color:"#adb5c0",fontWeight:400,textTransform:"none",fontSize:11}}>(or generate with AI in step 2)</span></Lbl>
                 <textarea className="inp" rows={3} placeholder="Say something about yourself..." value={form.bio} onChange={e=>setField("bio",e.target.value)} style={{resize:"vertical",lineHeight:1.6}}/>
                 <div className={`cc${form.bio.length>180?" o":form.bio.length>140?" w":""}`}>{form.bio.length}/200</div>
               </div>
-            </div>
+              {/* Fav Song — Spotify Search + Embed */}
+              <div>
+                <Lbl>Favourite Song <span style={{color:"#adb5c0",fontWeight:400,textTransform:"none",fontSize:11}}>(optional — search Spotify)</span></Lbl>
+                <SpotifySearch
+                  value={form.favSong}
+                  trackId={form.favSongTrackId}
+                  onSelect={(track)=>{
+                    setField("favSong", track.name);
+                    setField("favArtist", track.artist);
+                    setField("favSongTrackId", track.id);
+                    setField("favSongUrl", track.url);
+                  }}
+                  onClear={()=>{
+                    setField("favSong","");
+                    setField("favArtist","");
+                    setField("favSongTrackId","");
+                    setField("favSongUrl","");
+                  }}
+                />
+              </div>
             <div className="card">
               <Lbl>Profile Photo</Lbl>
               <div style={{display:"flex",alignItems:"center",gap:14,padding:14,borderRadius:12,cursor:"pointer",border:`2px dashed ${dragOver?"#6C63FF":form.avatar?"#6C63FF":"#e5e7eb"}`,background:dragOver?"#f2f0ff":form.avatar?"#f8f7ff":"#fafafa",transition:"all .2s"}}
@@ -1023,15 +1162,7 @@ export default function ProfileCreator() {
                   </div>
                 ))}
               </div>
-              <div style={{marginBottom:20}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                  <span style={{fontSize:12,fontWeight:600,color:"#374151"}}>Completeness</span>
-                  <span style={{fontSize:12,fontWeight:700,color:score>=80?"#10b981":AC}}>{score}%</span>
-                </div>
-                <div style={{height:8,background:"#e9eaf0",borderRadius:99,overflow:"hidden"}}>
-                  <div style={{width:`${score}%`,height:"100%",background:score>=80?"linear-gradient(90deg,#10b981,#34d399)":"linear-gradient(90deg,#6C63FF,#818cf8)",borderRadius:99,transition:"width .5s"}}/>
-                </div>
-              </div>
+
               <div style={{display:"flex",gap:10}}>
                 <button type="button" className="btn btn-s" style={{flex:1}} onClick={()=>setStep(4)}><i className="fas fa-arrow-left" style={{fontSize:12}}/> Back</button>
                 <button type="button" className="btn btn-p" style={{flex:2}} onClick={handlePublish} disabled={submitting||!form.username||!form.name}>
