@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
+/* ─── SSR-safe style injection ─── */
 let _stylesLoaded = false;
 function loadStyles() {
   if (typeof window === "undefined" || _stylesLoaded) return;
@@ -95,13 +96,13 @@ input:focus,textarea:focus{border-color:#6C63FF!important;box-shadow:0 0 0 3px r
   document.head.appendChild(s);
 }
 
-
+/* ─── Helpers ─── */
 function stripAI(t) {
   if (!t) return "";
   return t.replace(/<think>[\s\S]*?<\/think>/gi,"").replace(/^[\s\n\r]+/,"").trim();
 }
 
-
+/* ─── Constants ─── */
 const LS_KEY   = "mws_v6";
 const AC       = "#6C63FF";
 const GROQ_KEY = "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";
@@ -177,6 +178,7 @@ const ROLES = [
   {v:"volunteer",l:"Volunteer"},{v:"model",l:"Model"},{v:"other",l:"Other"},
 ];
 
+/* ─── Massive interest data ─── */
 const ALL_SPORTS = [
   "Cricket","Football","Basketball","Volleyball","Tennis","Badminton","Table Tennis",
   "Baseball","Rugby","Hockey","Swimming","Athletics","Cycling","Boxing","Wrestling",
@@ -230,20 +232,20 @@ const ALL_PASSIONS = [
 ];
 
 const ALL_SKILLS = [
-  
+  /* Tech */
   "JavaScript","TypeScript","Python","Java","C++","C","Rust","Go","Swift","Kotlin",
   "PHP","Ruby","Scala","Dart","R","MATLAB","React","Next.js","Vue","Angular","Svelte",
   "Node.js","Express","Django","FastAPI","Laravel","Spring Boot","Flutter","React Native",
   "GraphQL","REST APIs","Docker","Kubernetes","AWS","GCP","Azure","Firebase","MongoDB",
   "PostgreSQL","MySQL","Redis","Git","Linux","DevOps","CI/CD","Cybersecurity","Blockchain",
   "Web3","Machine Learning","Deep Learning","NLP","Data Science","Data Analysis","Tableau",
-
+  /* Design */
   "UI/UX Design","Figma","Adobe XD","Photoshop","Illustrator","After Effects","Premiere Pro",
   "Blender","3D Modeling","Motion Graphics","Video Editing","Photography Editing",
- 
+  /* Finance */
   "Stock Trading","Forex Trading","Crypto Trading","Options Trading","Fundamental Analysis",
   "Technical Analysis","Financial Modeling","Accounting","Bookkeeping","Tax Planning",
-  
+  /* Other */
   "Public Speaking","Leadership","Project Management","Content Writing","Copywriting",
   "SEO","Social Media Marketing","Email Marketing","Sales","Customer Service",
   "Graphic Design","Brand Design","Logo Design","Interior Design","Fashion Design",
@@ -260,7 +262,7 @@ const EMPTY = {
   interests:{role:"",hobbies:[],sports:[],vibes:[],music:[],passions:[],skills:[]},
 };
 
-
+/* ─── Share options factory ─── */
 function buildShareOptions(url, onClose, onCopy) {
   const enc = encodeURIComponent;
   return [
@@ -279,6 +281,7 @@ function buildShareOptions(url, onClose, onCopy) {
   ];
 }
 
+/* ─── Shared sub-components (defined outside main — stable) ─── */
 function ShareSheet({url, onClose, onCopy}) {
   const opts = buildShareOptions(url, onClose, onCopy);
   return (
@@ -307,15 +310,17 @@ function ShareSheet({url, onClose, onCopy}) {
 function Topbar({right}) {
   return (
     <div className="topbar">
-       <img src="/icon.png" alt="mywebsam" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
+      <a href="https://mywebsam.site/" target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:8,textDecoration:"none"}}>
+        <img src="/icon.png" alt="mywebsam" style={{width:32,height:32,borderRadius:8,objectFit:"contain"}}/>
         <span style={{fontWeight:800,fontSize:15,color:"#111827",letterSpacing:"-0.01em"}}>mywebsam</span>
       </a>
       {right}
     </div>
   );
 }
-const Footer = () => <div className="footer">Designed and Developed by <strong style={{color:"#374151"}}>Samartha Gs</strong></div>;
+const Footer = () => <div className="footer">Made with ❤️‍🔥 by <strong style={{color:"#374151"}}>Samartha GS</strong></div>;
 
+/* ─── Searchable tag section ─── */
 function SearchableTags({label, items, selected, onToggle}) {
   const [q, setQ] = useState("");
   const filtered = useMemo(()=>items.filter(i=>i.toLowerCase().includes(q.toLowerCase())),[items,q]);
@@ -343,6 +348,7 @@ function SearchableTags({label, items, selected, onToggle}) {
 }
 
 
+/* ─── Spotify Search Component ─── */
 function SpotifySearch({ value, trackId, onSelect, onClear }) {
   const [query,    setQuery]   = useState("");
   const [results,  setResults] = useState([]);
@@ -389,7 +395,7 @@ function SpotifySearch({ value, trackId, onSelect, onClear }) {
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value}</div>
-          <div style={{fontSize:12,color:"#6b7280",marginTop:1}}>From Spotify By Samarth</div>
+          <div style={{fontSize:12,color:"#6b7280",marginTop:1}}>on Spotify</div>
         </div>
         <button type="button" onClick={onClear}
           style={{background:"none",border:"none",cursor:"pointer",color:"#9ca3af",fontSize:16,padding:"4px",flexShrink:0}}>
@@ -535,7 +541,7 @@ export default function ProfileCreator() {
     {t:"Role or vibe selected",d:!!form.interests.role||form.interests.vibes.length>0},
     {t:"At least 3 interests",d:totalTags>=3},
     {t:"Social profile linked",d:filledSocials.length>0},
-    {t:"About mewritten/generated",d:!!(genBio||form.bio)},
+    {t:"Bio written/generated",d:!!(genBio||form.bio)},
   ];
 
   /* ── Stable handlers ── */
@@ -934,16 +940,16 @@ export default function ProfileCreator() {
               </div>
               <div className="g2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
                 <div><Lbl>Date of Birth</Lbl><input className="inp" type="date" value={form.dob} onChange={e=>setField("dob",e.target.value)}/></div>
-                <div><Lbl>Location</Lbl><input className="inp" placeholder="City, Taluk" value={form.location} onChange={e=>setField("location",e.target.value)}/></div>
+                <div><Lbl>Location</Lbl><input className="inp" placeholder="City, Country" value={form.location} onChange={e=>setField("location",e.target.value)}/></div>
               </div>
               <div style={{marginBottom:14}}>
-                <Lbl>Short Bio <span style={{color:"#adb5c0",fontWeight:400,textTransform:"none",fontSize:11}}>(Optional)</span></Lbl>
-                <textarea className="inp" rows={3} placeholder="Say something about yourself in one word..." value={form.bio} onChange={e=>setField("bio",e.target.value)} style={{resize:"vertical",lineHeight:1.6}}/>
+                <Lbl>Short Bio <span style={{color:"#adb5c0",fontWeight:400,textTransform:"none",fontSize:11}}>(or generate with AI in step 2)</span></Lbl>
+                <textarea className="inp" rows={3} placeholder="Say something about yourself..." value={form.bio} onChange={e=>setField("bio",e.target.value)} style={{resize:"vertical",lineHeight:1.6}}/>
                 <div className={`cc${form.bio.length>180?" o":form.bio.length>140?" w":""}`}>{form.bio.length}/200</div>
               </div>
               {/* Fav Song — Spotify Search + Embed */}
               <div>
-                <Lbl>Favourite Song <span style={{color:"#adb5c0",fontWeight:400,textTransform:"none",fontSize:11}}>(Optional — search Spotify)</span></Lbl>
+                <Lbl>Favourite Song <span style={{color:"#adb5c0",fontWeight:400,textTransform:"none",fontSize:11}}>(optional — search Spotify)</span></Lbl>
                 <SpotifySearch
                   value={form.favSong}
                   trackId={form.favSongTrackId}
@@ -1033,12 +1039,12 @@ export default function ProfileCreator() {
             {/* AI bio */}
             <div className="card">
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
-                <Lbl>AI Aboutme Generator</Lbl>
-                <div className="aibadge"><i className="fas fa-bolt"/> expo.1 · SGS Modeldiv>
+                <Lbl>AI Bio Generator</Lbl>
+                <div className="aibadge"><i className="fas fa-bolt"/> expo.1 · Groq AI</div>
               </div>
-              <p style={{fontSize:13,color:"#6b7280",lineHeight:1.6,marginBottom:12}}>Select your interests above, then generate a personalised Aboutme.</p>
+              <p style={{fontSize:13,color:"#6b7280",lineHeight:1.6,marginBottom:12}}>Select your interests above, then generate a personalised bio.</p>
               <button type="button" className="btn btn-g" style={{width:"100%"}} onClick={generateBio} disabled={aiLoad}>
-                {aiLoad?<><i className="fas fa-spinner spin"/> Generating...</>:<><i className="fas fa-wand-magic-sparkles"/> Generate My Aboutme</>}
+                {aiLoad?<><i className="fas fa-spinner spin"/> Generating...</>:<><i className="fas fa-wand-magic-sparkles"/> Generate My Bio</>}
               </button>
               {genBio&&(
                 <div style={{marginTop:14,borderTop:"1px solid #f0edff",paddingTop:14}}>
@@ -1087,7 +1093,7 @@ export default function ProfileCreator() {
         {step===4&&(
           <div className="fu">
             <div className="card" style={{marginBottom:12}}>
-              <SH icon="fas fa-link" title="Your Links" sub="Fav Youtube Videos or reels, Your Promotion, shop, blog, project — anything."/>
+              <SH icon="fas fa-link" title="Your Links" sub="Portfolio, shop, blog, project — anything."/>
               <div style={{background:"#f8f7ff",border:"1.5px solid #ede9ff",borderRadius:12,padding:14,marginBottom:16}}>
                 <Lbl>Add a Link</Lbl>
                 <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
@@ -1148,7 +1154,7 @@ export default function ProfileCreator() {
         {step===5&&(
           <div className="fu">
             <div className="card" style={{marginBottom:12}}>
-              <SH icon="fas fa-rocket" title={saved?"Update Profile":"Ready to Create?"} sub="Check your checklist and go live."/>
+              <SH icon="fas fa-rocket" title={saved?"Update Profile":"Ready to Publish?"} sub="Check your checklist and go live."/>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
                 {checklist.map(item=>(
                   <div key={item.t} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:item.d?"#f0fdf4":"#fafafa",border:`1.5px solid ${item.d?"#bbf7d0":"#e9eaf0"}`,borderRadius:10}}>
@@ -1162,7 +1168,7 @@ export default function ProfileCreator() {
               <div style={{display:"flex",gap:10}}>
                 <button type="button" className="btn btn-s" style={{flex:1}} onClick={()=>setStep(4)}><i className="fas fa-arrow-left" style={{fontSize:12}}/> Back</button>
                 <button type="button" className="btn btn-p" style={{flex:2}} onClick={handlePublish} disabled={submitting||!form.username||!form.name}>
-                  {submitting?<><i className="fas fa-spinner spin"/> {saved?"Updating...":"Creating..."}</>:<><i className="fas fa-rocket"/> {saved?"Update Profile":"Create Profile"}</>}
+                  {submitting?<><i className="fas fa-spinner spin"/> {saved?"Updating...":"Publishing..."}</>:<><i className="fas fa-rocket"/> {saved?"Update Profile":"Publish Profile"}</>}
                 </button>
               </div>
               {(!form.username||!form.name)&&<div style={{marginTop:10,fontSize:13,color:"#ef4444",textAlign:"center"}}><i className="fas fa-triangle-exclamation" style={{marginRight:5}}/>Username and name are required.</div>}
