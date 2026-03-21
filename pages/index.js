@@ -486,64 +486,45 @@ export default function ProfileCreator() {
     }finally{setAiLoad(false);}
   };
 
-  /* ── Publish ──
-     If same username → PUT /api/update  (updates existing profile on server)
-     If new username  → POST /api/create (creates new profile on server)
-     Local storage always saved first so UI never breaks even if API fails.
-  */
+  const [pubError,setPubError]=useState("");
+
+  /* ── Publish — always POST /api/create (must be upsert on server side) ── */
   const handlePublish=async()=>{
     setSubmitting(true);
+    setPubError("");
     const aboutme=genBio||form.bio;
-    const pUrl=`https://mywebsam.site/${form.username}`;
+    const origin=typeof window!=="undefined"?window.location.origin:"https://mywebsammu.vercel.app";
+    const pUrl=`${origin}/${form.username}`;
     const pObj={...form,aboutme,savedAt:new Date().toISOString(),publishedUrl:pUrl};
 
-    // Save locally FIRST — always
-    persist(pObj);
-
-    const isUpdate=!!(saved&&saved.username===form.username);
-
     try{
-      let res;
-      if(isUpdate){
-        // UPDATE existing profile — use PUT /api/update
-        res=await fetch("/api/update",{
-          method:"PUT",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({...form,aboutme}),
-        });
-        // Some setups use POST for update too — fallback
-        if(!res.ok&&res.status===405){
-          res=await fetch("/api/update",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({...form,aboutme}),
-          });
-        }
-      }else{
-        // CREATE new profile
-        res=await fetch("/api/create",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({...form,aboutme}),
-        });
+      const res=await fetch("/api/create",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({...form,aboutme}),
+      });
+      let data={};
+      try{data=await res.json();}catch(_){}
+      if(!res.ok){
+        setPubError(data?.error||`Server error (${res.status}) — check your /api/create.js`);
+        setSubmitting(false);
+        return;
       }
-      const data=await res.json();
       const finalUrl=data.url||pUrl;
       persist({...pObj,publishedUrl:finalUrl});
       setPubUrl(finalUrl);
       setPubUser(form.username);
-    }catch(_){
-      // Even if API fails, show success — data is saved locally
-      setPubUrl(pUrl);
-      setPubUser(form.username);
+      setView("success");
+    }catch(e){
+      setPubError("Network error — could not reach the server. Check your Vercel deployment.");
+      setSubmitting(false);
     }finally{
       setSubmitting(false);
-      setView("success");
     }
   };
 
   /* ── Share / copy ── */
-  const getUrl=()=>pubUrl||saved?.publishedUrl||`https://mywebsam.site/${saved?.username||""}`;
+  const getUrl=()=>pubUrl||saved?.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://mywebsammu.vercel.app"}/${saved?.username||""}`;
 
   const copyLink=useCallback(()=>{
     const url=getUrl();
@@ -586,7 +567,7 @@ export default function ProfileCreator() {
 
   /* ════ DASHBOARD ════ */
   if(view==="dashboard"&&saved){
-    const url=saved.publishedUrl||`https://mywebsam.site/${saved.username}`;
+    const url=saved.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://mywebsammu.vercel.app"}/${saved.username}`;
     const date=new Date(saved.savedAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
     return(
       <div style={{minHeight:"100vh",background:"#f4f5f9",paddingBottom:48}}>
@@ -946,6 +927,11 @@ export default function ProfileCreator() {
                 </button>
               </div>
               {(!form.username||!form.name)&&<div style={{marginTop:10,fontSize:13,color:"#ef4444",textAlign:"center"}}><i className="fas fa-triangle-exclamation" style={{marginRight:5}}/>Username and name are required.</div>}
+              {pubError&&(
+                <div style={{marginTop:12,padding:"12px 14px",background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,fontSize:13,color:"#dc2626"}}>
+                  <i className="fas fa-circle-xmark" style={{marginRight:7}}/><strong>Error:</strong> {pubError}
+                </div>
+              )}
             </div>
           </div>
         )}
