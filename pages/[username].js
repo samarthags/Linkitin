@@ -610,7 +610,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         <div className="foot s7">
-          <a href="/create" className="foot-cta">Create your own profile — it's free</a>
+          <a href="/" className="foot-cta">Create your own profile — it's free</a>
         </div>
 
       </div>
