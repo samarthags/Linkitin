@@ -4,7 +4,7 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 
 const SITE_URL = "https://mywebsam.site";
-const OG_IMAGE  = `${SITE_URL}/og.png`;  // place a 1200×630 image at /public/og.png
+const OG_IMAGE  = `${SITE_URL}/icon.png`;  // WhatsApp / OG preview image
 
 // Rotating words for the hero
 const WORDS = ["Create", "Link", "Share", "Analyse", "Connect","Explore"];
@@ -89,13 +89,13 @@ export default function Landing() {
         <meta property="og:description"   content="Create your personal link-in-bio profile. Add socials, Spotify, badge and AI bio — all at one URL. Free forever."/>
         <meta property="og:url"           content={SITE_URL}/>
         <meta property="og:image"         content={OG_IMAGE}/>
-        <meta property="og:image:width"   content="1200"/>
-        <meta property="og:image:height"  content="630"/>
+        <meta property="og:image:width"   content="512"/>
+        <meta property="og:image:height"  content="512"/>
         <meta property="og:image:alt"     content="mywebsam — Create your link in bio"/>
         <meta property="og:locale"        content="en_US"/>
 
         {/* ── Twitter Card ── */}
-        <meta name="twitter:card"         content="summary_large_image"/>
+        <meta name="twitter:card"         content="summary"/>
         <meta name="twitter:title"        content="mywebsam — Your Link in Bio"/>
         <meta name="twitter:description"  content="Create your personal profile page — socials, links, Spotify, AI bio. Free forever."/>
         <meta name="twitter:image"        content={OG_IMAGE}/>
@@ -393,10 +393,10 @@ export default function Landing() {
 
       {/* ── FOOTER ── */}
       <footer>
-        <div className="ft-name">mywebsam all rights recived</div>
+        <div className="ft-name"></div>
         <div className="ft-dev">Developed by <strong>Samartha Gs</strong></div>
         <div className="ft-links">
-          <a href="/create">Create Profile</a>
+          <a href="/">all rights recieved</a>
           <span className="ft-sep">·</span>
           <a href="https://mywebsam.site/samarthags">demo profile</a>
         </div>
