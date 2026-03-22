@@ -81,25 +81,12 @@ function ShareSheet({ url, name, onClose }) {
     }
     setCopied(true); setTimeout(()=>setCopied(false),2200);
   }
-  const instaCopy = async ()=>{
-    try{await navigator.clipboard.writeText(url);}catch(_){
-      const el=document.createElement("textarea");el.value=url;el.style.cssText="position:fixed;opacity:0;";
-      document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);
-    }
-    alert("Link copied! Paste it in your Instagram bio or story.");
-  };
-  const snapCopy = async ()=>{
-    try{await navigator.clipboard.writeText(url);}catch(_){
-      const el=document.createElement("textarea");el.value=url;el.style.cssText="position:fixed;opacity:0;";
-      document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);
-    }
-    alert("Link copied! Paste it in your Snapchat.");
-  };
+
   const opts = [
     {l:"Copy Link", ic:"fas fa-copy",          bg:"#1a1a2a",fg:"#a78bfa",fn:doCopy},
     {l:"WhatsApp",  ic:"fab fa-whatsapp",       bg:"#0d1f15",fg:"#25D366",fn:()=>window.open(`https://wa.me/?text=${enc(name+" "+url)}`)},
-    {l:"Instagram", ic:"fab fa-instagram",      bg:"#2a0d1a",fg:"#E4405F",fn:instaCopy},
-    {l:"Snapchat",  ic:"fab fa-snapchat",       bg:"#2a2a00",fg:"#FFE700",fn:snapCopy},
+    {l:"Instagram", ic:"fab fa-instagram",      bg:"#2a0d1a",fg:"#E4405F",fn:()=>window.open(`https://www.instagram.com/?url=${enc(url)}`)},
+    {l:"Snapchat",  ic:"fab fa-snapchat",       bg:"#2a2a00",fg:"#FFE700",fn:()=>window.open(`https://www.snapchat.com/scan?attachmentUrl=${enc(url)}`)},
     {l:"Telegram",  ic:"fab fa-telegram",       bg:"#0d1820",fg:"#26A5E4",fn:()=>window.open(`https://t.me/share/url?url=${enc(url)}&text=${enc(name)}`)},
     {l:"Twitter",   ic:"fab fa-x-twitter",      bg:"#111",   fg:"#fff",   fn:()=>window.open(`https://twitter.com/intent/tweet?text=${enc(name+" "+url)}`)},
     {l:"Facebook",  ic:"fab fa-facebook-f",     bg:"#0d1220",fg:"#1877F2",fn:()=>window.open(`https://facebook.com/sharer/sharer.php?u=${enc(url)}`)},
@@ -208,7 +195,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           *{-webkit-tap-highlight-color:transparent;}
           a,button{outline:none;text-decoration:none;color:inherit;}
           body{
-            background:#080808;
+            background:#050505;
             color:#fff;
             font-family:'Plus Jakarta Sans',sans-serif;
             min-height:100vh;overflow-x:hidden;
@@ -250,18 +237,18 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             position:absolute;inset:0;pointer-events:none;
             background:linear-gradient(
               to bottom,
-              rgba(8,8,8,0)    0%,
-              rgba(8,8,8,0)    30%,
-              rgba(8,8,8,.25)  55%,
-              rgba(8,8,8,.78)  78%,
-              rgba(8,8,8,1)    100%
+              rgba(5,5,5,0)    0%,
+              rgba(5,5,5,0)    25%,
+              rgba(5,5,5,.35)  52%,
+              rgba(5,5,5,.88)  76%,
+              rgba(5,5,5,1)    100%
             );
           }
 
           /* No photo fallback */
           .hero-ph{
             width:100%;height:58vh;min-height:320px;max-height:520px;
-            background:#0e0e0e;
+            background:#080808;
             display:flex;align-items:center;justify-content:center;
           }
           .av-ph{
@@ -319,7 +306,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           /* Bio */
           .bio-text{
             font-size:14px;line-height:1.8;
-            color:rgba(255,255,255,.36);
+            color:rgba(255,255,255,.48);
             text-align:center;
             margin-bottom:22px;
           }
@@ -346,7 +333,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             width:46px;height:46px;border-radius:13px;
             display:flex;align-items:center;justify-content:center;
             font-size:18px;
-            background:linear-gradient(180deg,#141414 0%,#0f0f0f 100%);
+            background:linear-gradient(180deg,#161616 0%,#111 100%);
             border:1px solid #222;
             transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;
             position:relative;
@@ -361,8 +348,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .lbtn{
             display:flex;align-items:center;
             width:100%;min-height:62px;
-            background:linear-gradient(180deg,#141414 0%,#101010 100%);
-            border:1px solid #222;border-radius:18px;
+            background:linear-gradient(180deg,#161616 0%,#111 100%);
+            border:1px solid #252525;border-radius:18px;
             cursor:pointer;overflow:hidden;position:relative;
             transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;
             box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
@@ -379,7 +366,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             width:36px;height:36px;border-radius:50%;
             overflow:hidden;
             display:flex;align-items:center;justify-content:center;
-            font-size:16px;color:rgba(255,255,255,.5);
+            font-size:16px;color:rgba(255,255,255,.72);
             background:rgba(255,255,255,.07);
             border:1px solid rgba(255,255,255,.1);
             flex-shrink:0;
@@ -388,7 +375,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .lbtn:hover .lbtn-ic{color:rgba(255,255,255,.9);background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);}
           .lbtn-t{
             flex:1;text-align:center;
-            font-size:15px;font-weight:700;color:#f0f0f0;
+            font-size:15px;font-weight:700;color:#ffffff;
             padding:0 14px;letter-spacing:-.01em;
           }
           .lbtn-a{
@@ -452,11 +439,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-embed{overflow:hidden;}
 
           /* Footer */
-          .foot{text-align:center;padding:4px 0;}
-          .foot-logo{display:inline-flex;align-items:center;gap:5px;margin-bottom:3px;}
-          .foot a{font-size:12px;color:#252525;font-weight:700;}
-          .foot a:hover{color:#454545;}
-          .foot-sub{font-size:11px;color:#1e1e1e;}
+          .foot{text-align:center;padding:8px 0 4px;}
+          .foot-cta{
+            font-size:12px;color:#2a2a2a;font-weight:600;
+            letter-spacing:.02em;
+          }
+          .foot-cta:hover{color:#555;}
 
           /* Share FAB — square like social icons */
           .sfab{
@@ -577,7 +565,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               {spOpen&&(
                 <div className="sp-embed">
                   <iframe
-                    src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0`}
+                    src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0&autoplay=1`}
                     width="100%" height="380" frameBorder="0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                     loading="lazy" style={{display:"block"}}
@@ -589,11 +577,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         <div className="foot s7">
-          <div className="foot-logo">
-            <img src="/icon.png" alt="mywebsam" style={{width:15,height:15,borderRadius:3,verticalAlign:"middle",opacity:.35}}/>
-            <a href="/"><strong>mywebsam</strong></a>
-          </div>
-          <div className="foot-sub">Your link in bio — <a href="/">Create yours free</a></div>
+          <a href="/" className="foot-cta">Create your own profile — it's free</a>
         </div>
 
       </div>
