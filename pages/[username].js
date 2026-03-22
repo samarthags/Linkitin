@@ -150,7 +150,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           </div>
           <h1 style={{fontSize:22,fontWeight:800,marginBottom:8}}>Profile Not Found</h1>
           <p style={{color:"#444",marginBottom:28}}>This username doesn't exist yet.</p>
-          <a href="/" style={{background:"#fff",color:"#000",padding:"12px 28px",borderRadius:999,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,outline:"none",WebkitTapHighlightColor:"transparent"}}>
+          <a href="/create" style={{background:"#fff",color:"#000",padding:"12px 28px",borderRadius:999,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,outline:"none",WebkitTapHighlightColor:"transparent"}}>
             <i className="fas fa-plus"/> Create Your Profile
           </a>
           <div style={{marginTop:40,fontSize:12,color:"#2a2a2a",fontWeight:500}}>
@@ -271,14 +271,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             position:relative;
             z-index:2;
           }
-          .pname{
-            font-size:clamp(36px,10vw,58px);
+                    .pname{
+            font-size:clamp(32px,9vw,52px);
             font-family:'Sora',sans-serif;
-            font-weight:900;
+            font-weight:700;
             color:#fff;
-            letter-spacing:-.03em;
-            line-height:1.0;
-            margin-bottom:12px;
+            letter-spacing:-.02em;
+            line-height:1.05;
+            margin-bottom:10px;
           }
           /* badge row — no @handle */
           .badge-row{
@@ -597,7 +597,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         <div className="foot s7">
-          <a href="/" className="foot-cta">Create your own profile — it's free</a>
+          <a href="/create" className="foot-cta">Create your own profile — it's free</a>
         </div>
 
       </div>
