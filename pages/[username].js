@@ -195,7 +195,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           *{-webkit-tap-highlight-color:transparent;}
           a,button{outline:none;text-decoration:none;color:inherit;}
           body{
-            background:#050505;
+            background:#0a0a0a;
             color:#fff;
             font-family:'Plus Jakarta Sans',sans-serif;
             min-height:100vh;overflow-x:hidden;
@@ -204,7 +204,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
           @keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
           @keyframes breathe{0%,100%{opacity:.9;}50%{opacity:.4;}}
-          @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
+          @keyframes softPulse{0%,100%{opacity:1;}50%{opacity:.72;}}
 
           /* stagger helpers */
           .s1{animation:slideUp .55s .06s cubic-bezier(.22,.68,0,1.1) both;}
@@ -286,15 +286,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .age-pill i{font-size:9px;opacity:.65;}
           .badge-pill{
             display:inline-flex;align-items:center;gap:6px;
-            background:linear-gradient(90deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.13) 50%,rgba(255,255,255,.06) 100%);
-            background-size:200% auto;
+            background:rgba(255,255,255,.08);
             border:1px solid rgba(255,255,255,.14);
             border-radius:999px;padding:5px 15px;
             font-size:12px;font-weight:700;
-            color:rgba(255,255,255,.65);
-            animation:shimmer 3s linear infinite;
+            color:rgba(255,255,255,.62);
+            animation:softPulse 4s ease infinite;
           }
-          .badge-pill i{font-size:10px;opacity:.7;}
+          .badge-pill i{font-size:10px;opacity:.65;}
 
           /* ── CONTENT ── */
           .content{
@@ -340,7 +339,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
           }
           .soc-btn::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);pointer-events:none;border-radius:inherit;}
-          .soc-btn:hover{transform:translateY(-5px) scale(1.08);border-color:#333;box-shadow:0 12px 28px rgba(0,0,0,.6);}
+          .soc-btn:hover{transform:translateY(-3px) scale(1.05);border-color:#2e2e2e;box-shadow:0 8px 20px rgba(0,0,0,.45);}
           .soc-btn:active{transform:scale(.93);}
 
           /* Link buttons */
@@ -355,7 +354,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
           }
           .lbtn::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);pointer-events:none;}
-          .lbtn:hover{transform:translateY(-3px) scale(1.012);border-color:#333;box-shadow:0 10px 28px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.04) inset;}
+          .lbtn:hover{transform:translateY(-2px) scale(1.008);border-color:#2e2e2e;box-shadow:0 10px 28px rgba(0,0,0,.45);}
           .lbtn:active{transform:scale(.98);}
           .lbtn-ic-wrap{
             width:60px;min-height:60px;
@@ -390,50 +389,46 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-block{margin-bottom:24px;}
           .sp-card{
             background:linear-gradient(135deg,#0d1f15 0%,#0a1410 100%);
-            border:1px solid rgba(29,185,84,.15);
+            border:1px solid rgba(255,255,255,.08);
             border-radius:18px;overflow:hidden;
             cursor:pointer;
             transition:border-color .15s,box-shadow .15s;
           }
-          .sp-card:hover{border-color:rgba(29,185,84,.3);box-shadow:0 8px 28px rgba(29,185,84,.08);}
+          .sp-card:hover{border-color:rgba(255,255,255,.14);box-shadow:0 8px 24px rgba(0,0,0,.4);}
           .sp-trig{
             display:flex;align-items:center;gap:13px;
             padding:14px 16px;
             position:relative;
           }
-          .sp-trig.open{border-bottom:1px solid rgba(29,185,84,.1);}
-          /* green glow line at top */
-          .sp-card::before{
-            content:"";display:block;height:2px;
-            background:linear-gradient(90deg,transparent,#1DB954,transparent);
-            opacity:.5;
-          }
+          .sp-trig.open{border-bottom:1px solid rgba(255,255,255,.06);}
+          .sp-card::before{content:none;}
           .sp-art{
             width:50px;height:50px;border-radius:10px;
-            background:rgba(29,185,84,.08);
-            border:1px solid rgba(29,185,84,.18);
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.1);
             display:flex;align-items:center;justify-content:center;
             font-size:24px;color:#1DB954;flex-shrink:0;
           }
           .sp-meta{flex:1;min-width:0;}
           .sp-eye{
             font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-            color:rgba(29,185,84,.6);margin-bottom:4px;
+            color:rgba(255,255,255,.35);margin-bottom:4px;
             display:flex;align-items:center;gap:5px;
           }
-          .sp-dot{width:5px;height:5px;border-radius:50%;background:#1DB954;animation:breathe 2s ease infinite;flex-shrink:0;}
+          .sp-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.4);animation:breathe 2s ease infinite;flex-shrink:0;}
           .sp-title{font-size:14px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
           .sp-artist{font-size:11.5px;color:rgba(255,255,255,.3);margin-top:2px;}
           .sp-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
           .sp-play-btn{
             width:34px;height:34px;border-radius:50%;
-            background:#1DB954;
+            background:rgba(255,255,255,.12);
+            border:1px solid rgba(255,255,255,.18);
             display:flex;align-items:center;justify-content:center;
-            font-size:12px;color:#000;
+            font-size:12px;color:rgba(255,255,255,.8);
             transition:transform .15s,background .13s;
             flex-shrink:0;
           }
-          .sp-card:hover .sp-play-btn{transform:scale(1.08);background:#1ed760;}
+          .sp-card:hover .sp-play-btn{transform:scale(1.08);background:rgba(255,255,255,.2);}
           .sp-caret{font-size:12px;color:rgba(255,255,255,.2);transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
           .sp-caret.open{transform:rotate(180deg);}
           .sp-embed{overflow:hidden;}
