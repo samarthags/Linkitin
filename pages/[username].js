@@ -84,16 +84,16 @@ function ShareSheet({ url, name, onClose }) {
 
   const opts = [
     {l:"Copy Link", ic:"fas fa-copy",          bg:"#1a1a2a",fg:"#a78bfa",fn:doCopy},
-    {l:"WhatsApp",  ic:"fab fa-whatsapp",       bg:"#0d1f15",fg:"#25D366",fn:()=>window.open(`https://wa.me/?text=${enc(name+" "+url)}`)},
+    {l:"WhatsApp",  ic:"fab fa-whatsapp",       bg:"#0d1f15",fg:"#25D366",fn:()=>window.open(`https://wa.me/?text=${enc("Visit "+name+"'s Profile: "+url)}`)},
     {l:"Instagram", ic:"fab fa-instagram",      bg:"#2a0d1a",fg:"#E4405F",fn:()=>window.open(`https://www.instagram.com/?url=${enc(url)}`)},
     {l:"Snapchat",  ic:"fab fa-snapchat",       bg:"#2a2a00",fg:"#FFE700",fn:()=>window.open(`https://www.snapchat.com/scan?attachmentUrl=${enc(url)}`)},
-    {l:"Telegram",  ic:"fab fa-telegram",       bg:"#0d1820",fg:"#26A5E4",fn:()=>window.open(`https://t.me/share/url?url=${enc(url)}&text=${enc(name)}`)},
-    {l:"Twitter",   ic:"fab fa-x-twitter",      bg:"#111",   fg:"#fff",   fn:()=>window.open(`https://twitter.com/intent/tweet?text=${enc(name+" "+url)}`)},
+    {l:"Telegram",  ic:"fab fa-telegram",       bg:"#0d1820",fg:"#26A5E4",fn:()=>window.open(`https://t.me/share/url?url=${enc(url)}&text=${enc("Visit "+name+"'s Profile!")}`)},
+    {l:"Twitter",   ic:"fab fa-x-twitter",      bg:"#111",   fg:"#fff",   fn:()=>window.open(`https://twitter.com/intent/tweet?text=${enc("Visit "+name+"'s Profile! "+url)}`)},
     {l:"Facebook",  ic:"fab fa-facebook-f",     bg:"#0d1220",fg:"#1877F2",fn:()=>window.open(`https://facebook.com/sharer/sharer.php?u=${enc(url)}`)},
-    {l:"LinkedIn",  ic:"fab fa-linkedin-in",    bg:"#0a1520",fg:"#0A66C2",fn:()=>window.open(`https://linkedin.com/sharing/share-offsite/?url=${enc(url)}`)},
-    {l:"Reddit",    ic:"fab fa-reddit-alien",   bg:"#1f1208",fg:"#FF4500",fn:()=>window.open(`https://reddit.com/submit?url=${enc(url)}`)},
-    {l:"Email",     ic:"fas fa-envelope",       bg:"#1f0d0d",fg:"#EA4335",fn:()=>window.open(`mailto:?subject=${enc(name)}&body=${enc(url)}`)},
-    {l:"SMS",       ic:"fas fa-comment-sms",    bg:"#0d1f15",fg:"#1DB954",fn:()=>window.open(`sms:?body=${enc(url)}`)},
+    {l:"LinkedIn",  ic:"fab fa-linkedin-in",    bg:"#0a1520",fg:"#0A66C2",fn:()=>window.open(`https://linkedin.com/sharing/share-offsite/?url=${enc(url)}&summary=${enc("Visit "+name+"'s Profile!")}`)},
+    {l:"Reddit",    ic:"fab fa-reddit-alien",   bg:"#1f1208",fg:"#FF4500",fn:()=>window.open(`https://reddit.com/submit?url=${enc(url)}&title=${enc("Visit "+name+"'s Profile!")}`)},
+    {l:"Email",     ic:"fas fa-envelope",       bg:"#1f0d0d",fg:"#EA4335",fn:()=>window.open(`mailto:?subject=${enc("Visit "+name+"'s Profile!")}&body=${enc("Visit "+name+"'s Profile: "+url)}`)},
+    {l:"SMS",       ic:"fas fa-comment-sms",    bg:"#0d1f15",fg:"#1DB954",fn:()=>window.open(`sms:?body=${enc("Visit "+name+"'s Profile: "+url)}`)},
   ];
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(6px)"}}>
@@ -174,12 +174,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     <>
       <Head>
         <title>{ptitle}</title>
-        <meta name="description"         content={bio||`${user.name}'s profile on mywebsam`}/>
+        <meta name="description"         content={metaDesc}/>
         <meta name="viewport"            content="width=device-width,initial-scale=1"/>
         <meta name="theme-color"         content="#080808"/>
         <meta property="og:type"         content="profile"/>
         <meta property="og:title"        content={ptitle}/>
-        <meta property="og:description"  content={bio||`${user.name}'s links on mywebsam`}/>
+        <meta property="og:description"  content={metaDesc}/>
         <meta property="og:url"          content={pageUrl}/>
         <meta property="og:site_name"    content="mywebsam"/>
         <meta property="og:image"        content={avatarUrl}/>
@@ -188,7 +188,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta property="og:image:type"   content="image/jpeg"/>
         <meta name="twitter:card"        content="summary_large_image"/>
         <meta name="twitter:title"       content={ptitle}/>
-        <meta name="twitter:description" content={bio||`${user.name}'s links on mywebsam`}/>
+        <meta name="twitter:description" content={metaDesc}/>
         <meta name="twitter:image"       content={avatarUrl}/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
         <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
