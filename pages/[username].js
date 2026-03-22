@@ -169,6 +169,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const badge     = user.interests?.role;
   const badgeIcon = badge && BADGE_ICONS[badge];
   const badgeLabel= badge ? badge.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase()) : null;
+  // Rich meta description — badge + bio
+  const metaDesc  = [badgeLabel, bio.slice(0,140)].filter(Boolean).join(" · ") || `${user.name}'s profile on mywebsam`;
 
   return (
     <>
