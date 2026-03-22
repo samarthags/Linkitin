@@ -358,32 +358,26 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           /* ── External Links — same card style as Spotify ── */
           .links-container{
-            background:#111;
-            border:1px solid #1c1c1c;
-            border-radius:18px;
-            overflow:hidden;
             margin-bottom:20px;
             position:relative;
           }
-          .links-container::before{
-            content:"";display:block;height:1px;
-            background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
-          }
-          .links{display:flex;flex-direction:column;gap:8px;}
+          .links-container::before{content:none;}
+          .links{display:flex;flex-direction:column;gap:10px;}
           .lbtn{
             display:flex;align-items:center;
             width:100%;
-            padding:13px 16px;
+            padding:12px 14px;
             background:#111;
-            border:1px solid #1c1c1c;
-            border-radius:14px;
+            border:1px solid #222;
+            border-radius:16px;
             cursor:pointer;
-            transition:background .14s,border-color .14s;
+            transition:background .14s,border-color .14s,box-shadow .14s;
+            box-shadow:0 2px 8px rgba(0,0,0,.3);
           }
-          .lbtn:hover{background:rgba(255,255,255,.04);border-color:#2a2a2a;}
+          .lbtn:hover{background:#161616;border-color:#2e2e2e;box-shadow:0 4px 16px rgba(0,0,0,.45);}
           .lbtn:active{background:rgba(255,255,255,.07);}
           .lbtn-ic-wrap{
-            width:42px;
+            width:50px;
             display:flex;align-items:center;justify-content:center;
             flex-shrink:0;
           }
