@@ -369,19 +369,18 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             content:"";display:block;height:1px;
             background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
           }
-          .links{display:flex;flex-direction:column;}
+          .links{display:flex;flex-direction:column;gap:8px;}
           .lbtn{
             display:flex;align-items:center;
             width:100%;
             padding:13px 16px;
-            background:transparent;
-            border:none;
-            border-bottom:1px solid rgba(255,255,255,.05);
+            background:#111;
+            border:1px solid #1c1c1c;
+            border-radius:14px;
             cursor:pointer;
-            transition:background .14s;
+            transition:background .14s,border-color .14s;
           }
-          .lbtn:last-child{border-bottom:none;}
-          .lbtn:hover{background:rgba(255,255,255,.04);}
+          .lbtn:hover{background:rgba(255,255,255,.04);border-color:#2a2a2a;}
           .lbtn:active{background:rgba(255,255,255,.07);}
           .lbtn-ic-wrap{
             width:42px;
