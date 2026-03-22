@@ -219,6 +219,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .s7{animation:slideUp .6s .52s cubic-bezier(.16,1,.3,1) both;}
 
           /* ── HERO ── */
+          .hero-wrap{
+            position:relative;
+            width:100%;
+            /* hero + extended fade zone below it */
+          }
           .hero{
             position:relative;
             width:100%;
@@ -226,28 +231,30 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             min-height:300px;
             max-height:520px;
             overflow:hidden;
-            animation:fadeIn .7s ease both;
           }
           .hero-img{
-            width:100%;
-            height:100%;
+            width:100%;height:100%;
             object-fit:cover;
             object-position:center top;
             display:block;
+            animation:fadeIn .8s ease both;
           }
-          /* smooth gradient fade — matches body exactly */
+          /* Gradient sits OUTSIDE overflow:hidden — covers bottom of photo AND spills below */
           .hero-fade{
-            position:absolute;inset:0;pointer-events:none;
+            position:absolute;
+            bottom:-60px;   /* extends 60px below the photo into the body */
+            left:0;right:0;
+            height:55%;     /* covers bottom 55% of photo + spills below */
+            pointer-events:none;
             background:linear-gradient(
               to bottom,
-              rgba(10,10,10,0)   0%,
-              rgba(10,10,10,0)   20%,
-              rgba(10,10,10,.15) 38%,
-              rgba(10,10,10,.55) 58%,
-              rgba(10,10,10,.88) 76%,
-              rgba(10,10,10,1)   90%,
-              rgba(10,10,10,1)   100%
+              rgba(13,13,13,0)    0%,
+              rgba(13,13,13,.28)  35%,
+              rgba(13,13,13,.72)  62%,
+              rgba(13,13,13,.96)  82%,
+              rgba(13,13,13,1)    100%
             );
+            z-index:2;
           }
 
           /* No photo fallback */
@@ -263,13 +270,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             font-size:40px;font-weight:800;color:#fff;
           }
 
-          /* ── IDENTITY — overlaps hero bottom for seamless look ── */
+          /* ── IDENTITY — floats up into the gradient zone ── */
           .id-block{
             text-align:center;
             padding:0 20px 0;
-            margin-top:-32px;
+            margin-top:-80px;   /* pulls name UP into the gradient area */
             position:relative;
-            z-index:2;
+            z-index:5;
           }
                     .pname{
             font-size:clamp(32px,9vw,52px);
@@ -358,48 +365,60 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .soc-btn:hover{transform:translateY(-3px) scale(1.05);border-color:#2e2e2e;box-shadow:0 8px 20px rgba(0,0,0,.45);}
           .soc-btn:active{transform:scale(.93);}
 
-          /* Link buttons */
-          .links{display:flex;flex-direction:column;gap:9px;margin-bottom:20px;}
+          /* ── External Links — thin row style like Spotify card ── */
+          .links-container{
+            background:#111;
+            border:1px solid #1c1c1c;
+            border-radius:18px;
+            overflow:hidden;
+            margin-bottom:20px;
+          }
+          /* thin accent line at top of container */
+          .links-container::before{
+            content:"";display:block;height:1px;
+            background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+          }
+          .links{display:flex;flex-direction:column;}
           .lbtn{
             display:flex;align-items:center;
-            width:100%;min-height:62px;
-            background:linear-gradient(180deg,#161616 0%,#111 100%);
-            border:1px solid #1e1e1e;border-radius:16px;
+            width:100%;min-height:56px;
+            background:transparent;
+            border:none;
+            border-bottom:1px solid rgba(255,255,255,.05);
             cursor:pointer;overflow:hidden;position:relative;
-            transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;
-            box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
+            transition:background .15s;
           }
-          .lbtn::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);pointer-events:none;}
-          .lbtn:hover{transform:translateY(-2px) scale(1.008);border-color:#2e2e2e;box-shadow:0 10px 28px rgba(0,0,0,.45);}
-          .lbtn:active{transform:scale(.98);}
+          .lbtn:last-child{border-bottom:none;}
+          .lbtn:hover{background:rgba(255,255,255,.04);}
+          .lbtn:active{background:rgba(255,255,255,.06);}
           .lbtn-ic-wrap{
-            width:60px;min-height:60px;
+            width:56px;min-height:56px;
             display:flex;align-items:center;justify-content:center;
-            flex-shrink:0;border-right:1px solid #181818;
+            flex-shrink:0;
           }
           .lbtn-ic{
-            width:36px;height:36px;border-radius:50%;
+            width:32px;height:32px;border-radius:50%;
             overflow:hidden;
             display:flex;align-items:center;justify-content:center;
-            font-size:16px;color:rgba(255,255,255,.72);
-            background:rgba(255,255,255,.07);
-            border:1px solid rgba(255,255,255,.1);
+            font-size:14px;color:rgba(255,255,255,.55);
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.08);
             flex-shrink:0;
-            transition:color .13s,background .13s,border-color .13s;
+            transition:color .13s;
           }
-          .lbtn:hover .lbtn-ic{color:rgba(255,255,255,.9);background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);}
+          .lbtn:hover .lbtn-ic{color:rgba(255,255,255,.85);}
           .lbtn-t{
-            flex:1;text-align:center;
-            font-size:15px;font-weight:700;color:#ffffff;
-            padding:0 14px;letter-spacing:-.01em;
+            flex:1;
+            font-size:14px;font-weight:600;color:rgba(255,255,255,.82);
+            padding:0 12px;letter-spacing:-.01em;
           }
           .lbtn-a{
-            width:44px;min-height:60px;
+            width:42px;min-height:56px;
             display:flex;align-items:center;justify-content:center;
-            font-size:11px;color:rgba(255,255,255,.15);flex-shrink:0;
-            transition:color .13s,transform .18s;
+            font-size:10px;color:rgba(255,255,255,.15);flex-shrink:0;
+            transition:color .13s,transform .15s;
           }
-          .lbtn:hover .lbtn-a{color:rgba(255,255,255,.45);transform:translateX(3px);}
+          .lbtn:hover .lbtn-a{color:rgba(255,255,255,.4);transform:translateX(2px);}
 
           /* Spotify player card */
           .sp-block{margin-bottom:20px;}
@@ -498,10 +517,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <i className="fas fa-share-nodes"/>
       </button>
 
-      {/* ── HERO — full width centered photo ── */}
+      {/* ── HERO ── */}
       {user.avatar ? (
-        <div className="hero">
-          <img src={user.avatar} alt={user.name} className="hero-img"/>
+        <div className="hero-wrap">
+          <div className="hero">
+            <img src={user.avatar} alt={user.name} className="hero-img"/>
+          </div>
+          {/* Gradient OUTSIDE overflow:hidden so it blends seamlessly into body */}
           <div className="hero-fade"/>
         </div>
       ) : (
@@ -510,7 +532,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         </div>
       )}
 
-      {/* ── Identity block — name + badge only, NO @handle ── */}
+      {/* ── Identity — pulled up into the gradient zone ── */}
       <div className="id-block s1">
         <div className="pname">{user.name}</div>
         <div className="badge-row">
@@ -544,7 +566,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {(user.links||[]).length > 0 && (
-          <div className="links s4">
+          <div className="links-container s4">
+          <div className="links">
             {user.links.map((lnk,i)=>(
               <a key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
                 className="lbtn"
@@ -562,6 +585,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                 <div className="lbtn-a"><i className="fas fa-arrow-up-right-from-square"/></div>
               </a>
             ))}
+          </div>
           </div>
         )}
 
