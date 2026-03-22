@@ -153,6 +153,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <a href="/" style={{background:"#fff",color:"#000",padding:"12px 28px",borderRadius:999,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,outline:"none",WebkitTapHighlightColor:"transparent"}}>
             <i className="fas fa-plus"/> Create Your Profile
           </a>
+          <div style={{marginTop:40,fontSize:12,color:"#2a2a2a",fontWeight:500}}>
+            Developed by <strong style={{color:"#444"}}>Samartha GS</strong>
+          </div>
         </div>
       </>
     );
@@ -188,7 +191,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta name="twitter:description" content={bio||`${user.name}'s links on mywebsam`}/>
         <meta name="twitter:image"       content={avatarUrl}/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
         <style>{`
           *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
           html,body{min-height:100%;-webkit-font-smoothing:antialiased;}
@@ -197,34 +200,33 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           body{
             background:#0a0a0a;
             color:#fff;
-            font-family:'DM Sans',sans-serif;
+            font-family:'Raleway',sans-serif;
             min-height:100vh;overflow-x:hidden;
           }
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-          @keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+          @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
           @keyframes breathe{0%,100%{opacity:.9;}50%{opacity:.4;}}
           @keyframes softPulse{0%,100%{opacity:1;}50%{opacity:.72;}}
 
-          /* stagger helpers */
-          .s1{animation:slideUp .55s .06s cubic-bezier(.22,.68,0,1.1) both;}
-          .s2{animation:slideUp .55s .14s cubic-bezier(.22,.68,0,1.1) both;}
-          .s3{animation:slideUp .55s .22s cubic-bezier(.22,.68,0,1.1) both;}
-          .s4{animation:slideUp .55s .30s cubic-bezier(.22,.68,0,1.1) both;}
-          .s5{animation:slideUp .55s .38s cubic-bezier(.22,.68,0,1.1) both;}
-          .s6{animation:slideUp .55s .46s cubic-bezier(.22,.68,0,1.1) both;}
-          .s7{animation:slideUp .55s .54s cubic-bezier(.22,.68,0,1.1) both;}
+          /* stagger helpers — smooth ease */
+          .s1{animation:slideUp .6s .04s cubic-bezier(.16,1,.3,1) both;}
+          .s2{animation:slideUp .6s .12s cubic-bezier(.16,1,.3,1) both;}
+          .s3{animation:slideUp .6s .20s cubic-bezier(.16,1,.3,1) both;}
+          .s4{animation:slideUp .6s .28s cubic-bezier(.16,1,.3,1) both;}
+          .s5{animation:slideUp .6s .36s cubic-bezier(.16,1,.3,1) both;}
+          .s6{animation:slideUp .6s .44s cubic-bezier(.16,1,.3,1) both;}
+          .s7{animation:slideUp .6s .52s cubic-bezier(.16,1,.3,1) both;}
 
-          /* ── HERO — full width, smooth blend into page ── */
+          /* ── HERO ── */
           .hero{
             position:relative;
             width:100%;
-            height:60vh;
+            height:62vh;
             min-height:300px;
-            max-height:500px;
+            max-height:520px;
             overflow:hidden;
             animation:fadeIn .7s ease both;
-            /* No bottom clip so gradient bleeds into body */
           }
           .hero-img{
             width:100%;
@@ -261,19 +263,22 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             font-size:40px;font-weight:800;color:#fff;
           }
 
-          /* ── IDENTITY ── */
+          /* ── IDENTITY — overlaps hero bottom for seamless look ── */
           .id-block{
             text-align:center;
-            padding:10px 20px 0;
+            padding:0 20px 0;
+            margin-top:-32px;
+            position:relative;
+            z-index:2;
           }
           .pname{
-            font-size:clamp(30px,8vw,50px);
-            font-family:'DM Serif Display',serif;
-            font-weight:400;
+            font-size:clamp(36px,10vw,58px);
+            font-family:'Raleway',sans-serif;
+            font-weight:900;
             color:#fff;
-            letter-spacing:-.01em;
-            line-height:1.05;
-            margin-bottom:10px;
+            letter-spacing:-.03em;
+            line-height:1.0;
+            margin-bottom:12px;
           }
           /* badge row — no @handle */
           .badge-row{
@@ -335,7 +340,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .soc-btn{
             width:46px;height:46px;border-radius:13px;
             display:flex;align-items:center;justify-content:center;
-            font-size:18px;
+            font-size:17px;
             background:linear-gradient(180deg,#161616 0%,#111 100%);
             border:1px solid #222;
             transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;
@@ -411,7 +416,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:rgba(255,255,255,.05);
             border:1px solid rgba(255,255,255,.1);
             display:flex;align-items:center;justify-content:center;
-            font-size:24px;color:#1DB954;flex-shrink:0;
+            font-size:24px;color:rgba(255,255,255,.7);flex-shrink:0;
           }
           .sp-meta{flex:1;min-width:0;}
           .sp-eye{
@@ -419,7 +424,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             color:rgba(255,255,255,.35);margin-bottom:4px;
             display:flex;align-items:center;gap:5px;
           }
-          .sp-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.4);animation:breathe 2s ease infinite;flex-shrink:0;}
+          .sp-dot{display:none;}
           .sp-title{font-size:14px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
           .sp-artist{font-size:11.5px;color:rgba(255,255,255,.3);margin-top:2px;}
           .sp-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -435,7 +440,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-card:hover .sp-play-btn{transform:scale(1.08);background:rgba(255,255,255,.2);}
           .sp-caret{font-size:12px;color:rgba(255,255,255,.2);transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
           .sp-caret.open{transform:rotate(180deg);}
-          .sp-embed{overflow:hidden;display:block;line-height:0;font-size:0;}
+          .sp-embed{
+            overflow:hidden;display:flex;
+            justify-content:center;
+            align-items:center;
+            background:#111;
+            padding:0;
+          }
 
           /* Footer */
           .foot{text-align:center;padding:8px 0 4px;}
@@ -570,7 +581,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                     src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0&autoplay=1`}
                     width="100%" height="380" frameBorder="0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy" style={{display:"block",verticalAlign:"bottom"}}
+                    loading="lazy" style={{display:"block",width:"100%",maxWidth:"100%"}}
                   />
                 </div>
               )}
