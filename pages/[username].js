@@ -388,7 +388,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             flex-shrink:0;
           }
           .lbtn-ic{
-            width:36px;height:36px;border-radius:50%;
+            width:36px;height:36px;border-radius:10px;
             overflow:hidden;
             display:flex;align-items:center;justify-content:center;
             font-size:15px;color:rgba(255,255,255,.55);
@@ -459,11 +459,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-caret{font-size:12px;color:rgba(255,255,255,.2);transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
           .sp-caret.open{transform:rotate(180deg);}
           .sp-embed{
-            overflow:hidden;display:flex;
-            justify-content:center;
-            align-items:center;
+            overflow:hidden;
             background:#111;
-            padding:0;
+            padding:10px 10px 0;
           }
 
           /* Footer */
