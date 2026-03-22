@@ -154,7 +154,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             <i className="fas fa-plus"/> Create Your Profile
           </a>
           <div style={{marginTop:40,fontSize:12,color:"#2a2a2a",fontWeight:500}}>
-            Developed by <strong style={{color:"#444"}}>Samartha GS</strong>
+            Developed by <strong style={{color:"#444"}}>Samartha Gs</strong>
           </div>
         </div>
       </>
@@ -165,7 +165,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const socials   = Object.entries(user.socialProfiles||{}).filter(([,v])=>v?.trim()).filter(([k])=>PLAT[k]);
   const interests = Object.values(user.interests||{}).flat().filter(v=>v&&typeof v==="string").slice(0,12);
   const bio       = user.aboutme||user.bio||"";
-  const ptitle    = `${user.name} | mywebsam`;
+  const ptitle    = `${user.name} | Mywebsam`;
   const badge     = user.interests?.role;
   const badgeIcon = badge && BADGE_ICONS[badge];
   const badgeLabel= badge ? badge.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase()) : null;
@@ -585,7 +585,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                 onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
                 <div className="sp-art"><i className="fab fa-spotify"/></div>
                 <div className="sp-meta">
-                  <div className="sp-eye"><span className="sp-dot"/>Currently Vibing To</div>
+                  <div className="sp-eye"><span className="sp-dot"/>Favourite one</div>
                   <div className="sp-title">{user.favSong||"My Favourite Song"}</div>
                   {user.favArtist&&<div className="sp-artist">{user.favArtist}</div>}
                 </div>
