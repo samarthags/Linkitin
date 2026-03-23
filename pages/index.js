@@ -173,12 +173,7 @@ export default function Landing() {
             background: radial-gradient(circle, rgba(255,255,255,.022) 0%, transparent 65%);
             pointer-events: none;
           }
-          .hero::after {
-            content: "";
-            position: absolute; bottom: 0; left: 8%; right: 8%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #222, transparent);
-          }
+          .hero::after { display: none; }
 
           .eyebrow {
             display: inline-flex; align-items: center; gap: 7px;
@@ -281,7 +276,7 @@ export default function Landing() {
           /* ── SECTIONS ── */
           .wrap {
             max-width: 960px; margin: 0 auto;
-            padding: 88px 20px;
+            padding: 56px 20px;
           }
           .divider {
             max-width: 960px; margin: 0 auto;
@@ -429,7 +424,7 @@ export default function Landing() {
           /* ── MOBILE TWEAKS ── */
           @media (max-width: 420px) {
             .hero { padding: 56px 16px 52px; }
-            .wrap { padding: 64px 16px; }
+            .wrap { padding: 48px 16px; }
             .cta-box { padding: 38px 18px; }
             .feat-grid { border-radius: 14px; }
             .feat-card { padding: 20px 16px; }
