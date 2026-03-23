@@ -7,7 +7,7 @@ const SITE_URL = "https://linkitin.site";
 const OG_IMAGE  = `${SITE_URL}/icon.png`;  // WhatsApp / OG preview image
 
 // Rotating words for the hero
-const WORDS = ["Create it", "Link in", "Share it ", "Analyse it", "Connect in","Explore it"];
+const WORDS = ["Create it", "Link it", "Share it ", "Analyse it", "Connect with it","Explore it"];
 
 export default function Landing() {
   const [visible,  setVisible]  = useState(false);
@@ -396,9 +396,9 @@ export default function Landing() {
         <div className="ft-name"></div>
         <div className="ft-dev">Developed by <strong>Samartha Gs</strong></div>
         <div className="ft-links">
-          <a href="/">all rights recieved</a>
+          <a href="/">All rights recieved</a>
           <span className="ft-sep">·</span>
-          <a href="https://linkitin.site/samarthags">demo profile</a>
+          <a href="https://linkitin.site/samarthags">Demo profile</a>
         </div>
       </footer>
     </>
