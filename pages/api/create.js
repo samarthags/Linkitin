@@ -1,6 +1,57 @@
 // pages/api/create.js
 import clientPromise from "../../lib/mongodb";
+import crypto from "crypto";
 
+// ─── Cloudinary upload helper ────────────────────────────────────────────────
+// Uploads a base64 data-URI to Cloudinary and returns the secure CDN URL.
+// No SDK needed — plain fetch + HMAC signature.
+async function uploadToCloudinary(base64DataUri, folder = "linkitin") {
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    throw new Error("Cloudinary env vars not configured");
+  }
+
+  const timestamp    = Math.floor(Date.now() / 1000);
+  const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+  const signature    = crypto
+    .createHmac("sha256", CLOUDINARY_API_SECRET)
+    .update(paramsToSign)
+    .digest("hex");
+
+  const formData = new FormData();
+  formData.append("file",      base64DataUri);
+  formData.append("timestamp", String(timestamp));
+  formData.append("api_key",   CLOUDINARY_API_KEY);
+  formData.append("signature", signature);
+  formData.append("folder",    folder);
+
+  const res  = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: formData }
+  );
+  const json = await res.json();
+
+  if (!res.ok || json.error) {
+    throw new Error(json.error?.message || "Cloudinary upload failed");
+  }
+  return json.secure_url; // https://res.cloudinary.com/…
+}
+
+// If value is a raw base64 data-URI → upload it and return CDN URL.
+// If it's already a normal URL or empty → return unchanged.
+async function maybeUpload(value, folder) {
+  if (value && value.startsWith("data:image/")) {
+    return await uploadToCloudinary(value, folder);
+  }
+  return value || "";
+}
+
+// ─── Body size limit: allow base64 payloads ───────────────────────────────────
+export const config = {
+  api: { bodyParser: { sizeLimit: "8mb" } },
+};
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -22,22 +73,26 @@ export default async function handler(req, res) {
   const uname = username.toLowerCase();
 
   try {
+    // ── 1. Upload any base64 blobs to Cloudinary BEFORE touching the DB ────────
+    const safeAvatar = await maybeUpload(avatar, "linkitin/avatars");
+
+    const safeLinks = await Promise.all(
+      (links || []).map(async (lnk) => ({
+        ...lnk,
+        icon: await maybeUpload(lnk.icon, "linkitin/link-icons"),
+      }))
+    );
+
+    // ── 2. DB upsert ────────────────────────────────────────────────────────────
     const client = await clientPromise;
     const db     = client.db(process.env.DB_NAME);
 
     const existing = await db.collection("users").findOne({ username: uname });
 
     if (existing && !_isEditing) {
-      // Someone else already owns this username — block it
       return res.status(400).json({ error: "Username already taken. Please choose a different one." });
     }
 
-    if (_isEditing && !existing) {
-      // Edge case: profile was deleted externally but user tries to update
-      // Treat as a fresh create — just continue below
-    }
-
-    // Upsert — creates if new, updates if editing own profile
     await db.collection("users").findOneAndUpdate(
       { username: uname },
       {
@@ -48,9 +103,9 @@ export default async function handler(req, res) {
           location:       location       || "",
           bio:            bio            || "",
           aboutme:        aboutme        || "",
-          avatar:         avatar         || "",
+          avatar:         safeAvatar,      // ← Cloudinary URL, never base64
           socialProfiles: socialProfiles || {},
-          links:          links          || [],
+          links:          safeLinks,       // ← link icons also CDN URLs
           interests:      interests      || {},
           favSong:        favSong        || "",
           favArtist:      favArtist      || "",
@@ -73,6 +128,9 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("[/api/create]", err);
+    if (err.message?.includes("Cloudinary") || err.message?.includes("cloudinary")) {
+      return res.status(500).json({ error: "Image upload failed. Please try again." });
+    }
     return res.status(500).json({ error: "Database error" });
   }
 }
