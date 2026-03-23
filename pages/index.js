@@ -474,9 +474,7 @@ export default function Landing() {
       </nav>
 
       <main>
-        {/* HERO */}
-        <div className={`hero ${visible ? "vis" : ""}`} role="banner">
-
+        
           <div className="eyebrow a1">
             <span className="dot" aria-hidden="true" />
             Free · No account needed
