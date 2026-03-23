@@ -1,36 +1,24 @@
 // pages/api/create.js
 import clientPromise from "../../lib/mongodb";
+import { v2 as cloudinary } from "cloudinary";
 
-async function uploadToCloudinary(base64DataUri) {
-  const cloud  = process.env.CLOUDINARY_CLOUD_NAME?.trim();
-  const preset = process.env.CLOUDINARY_UPLOAD_PRESET?.trim();
-
-  if (!cloud || !preset) {
-    console.warn("[Cloudinary] CLOUDINARY_CLOUD_NAME or CLOUDINARY_UPLOAD_PRESET missing");
-    return base64DataUri; // fallback — store as-is
-  }
-
-  const body = new URLSearchParams();
-  body.append("file",           base64DataUri);
-  body.append("upload_preset",  preset);
-
-  const res  = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloud}/image/upload`,
-    { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body }
-  );
-  const json = await res.json();
-
-  if (!res.ok || json.error) {
-    throw new Error(json.error?.message || "Cloudinary upload failed");
-  }
-  return json.secure_url;
-}
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 async function maybeUpload(value) {
-  if (value && value.startsWith("data:image/")) {
-    return await uploadToCloudinary(value);
+  if (!value || !value.startsWith("data:image/")) return value || "";
+  try {
+    const result = await cloudinary.uploader.upload(value, {
+      folder: "linkitin",
+    });
+    return result.secure_url;
+  } catch (err) {
+    console.error("[Cloudinary upload error]", err.message);
+    throw new Error("Cloudinary: " + err.message);
   }
-  return value || "";
 }
 
 export const config = {
@@ -58,7 +46,6 @@ export default async function handler(req, res) {
   const uname = username.toLowerCase();
 
   try {
-    // Upload any base64 images to Cloudinary before saving to DB
     const safeAvatar = await maybeUpload(avatar);
 
     const safeLinks = await Promise.all(
@@ -112,7 +99,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("[/api/create]", err);
-    if (err.message?.includes("Cloudinary") || err.message?.includes("cloudinary")) {
+    if (err.message?.toLowerCase().includes("cloudinary")) {
       return res.status(500).json({ error: "Image upload failed. Please try again." });
     }
     return res.status(500).json({ error: "Database error" });
