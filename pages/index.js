@@ -543,7 +543,18 @@ export default function Landing() {
       {/* FOOTER */}
       <footer>
         <div className="ft-logo">linkitin</div>
-        <div className="ft-dev">Developed by <strong>Samartha Gs</strong></div>
+        <div className="ft-dev">
+  Developed by{" "}
+  <strong>
+    <a 
+      href="https://linkitin.site/samarthags" 
+      target="_blank" 
+      rel="noopener noreferrer"
+    >
+      Samartha Gs
+    </a>
+  </strong>
+</div>
         <div className="ft-links">
           <a href="/">© {new Date().getFullYear()} linkitin</a>
           <span className="ft-sep">·</span>
