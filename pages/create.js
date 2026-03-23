@@ -386,9 +386,18 @@ const Footer = () => (
       <span style={{color:"#b0b7c3"}}>Do not clear browser data to keep access to your profile settings.</span>
     </div>
     <div style={{fontSize:12,color:"#b0b7c3",fontWeight:500}}>
-      Developed by <strong style={{color:"#6b7280",fontWeight:700}}>Samartha GS</strong>
-    </div>
-  </div>
+  Developed by{" "}
+  <strong style={{color:"#6b7280",fontWeight:700}}>
+    <a
+      href="https://linkitin.site/samarthags"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ color: "inherit", textDecoration: "none" }}
+    >
+      Samartha Gs
+    </a>
+  </strong>
+</div>
 );
 
 /* ─── Searchable tag section ─── */
