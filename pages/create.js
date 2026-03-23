@@ -696,7 +696,7 @@ export default function ProfileCreator() {
     setSubmitting(true);
     setPubError("");
     const aboutme = genBio||form.bio;
-    const origin  = typeof window!=="undefined" ? window.location.origin : "https://mywebsammu.vercel.app";
+    const origin  = typeof window!=="undefined" ? window.location.origin : "https://linkitin.site";
     const pUrl    = `${origin}/${form.username}`;
     const pObj    = {...form, aboutme, savedAt:new Date().toISOString(), publishedUrl:pUrl};
     // If a saved profile exists with the SAME username → this is an edit, not a new creation
@@ -728,7 +728,7 @@ export default function ProfileCreator() {
   };
 
   /* ── Share / copy ── */
-  const getUrl=()=>pubUrl||saved?.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://mywebsammu.vercel.app"}/${saved?.username||""}`;
+  const getUrl=()=>pubUrl||saved?.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://linkitin.site"}/${saved?.username||""}`;
 
   const copyLink=useCallback(()=>{
     const url=getUrl();
@@ -791,7 +791,7 @@ export default function ProfileCreator() {
 
   /* ════ DASHBOARD ════ */
   if(view==="dashboard"&&saved){
-    const url=saved.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://mywebsammu.vercel.app"}/${saved.username}`;
+    const url=saved.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://linkitin.site"}/${saved.username}`;
     const date=new Date(saved.savedAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
     return(
       <div style={{minHeight:"100vh",background:"#f4f5f9",paddingBottom:48}}>
@@ -895,7 +895,7 @@ export default function ProfileCreator() {
               <div className="sring"><i className="fas fa-check" style={{color:"#fff",fontSize:36}}/></div>
               <h2 style={{fontSize:24,fontWeight:800,marginBottom:8}}>{saved?.savedAt?"Profile Updated!":"Profile Created!"}</h2>
               <p style={{color:"#6b7280",fontSize:14,lineHeight:1.7,marginBottom:20}}>
-                Live at <strong style={{color:AC}}>mywebsam.site/{pubUser}</strong>
+                Live at <strong style={{color:AC}}>linkitin.site/{pubUser}</strong>
               </p>
               <div className="urlbox" style={{marginBottom:16}}>
                 <i className="fas fa-globe" style={{color:AC,fontSize:13,flexShrink:0}}/>
@@ -922,7 +922,7 @@ export default function ProfileCreator() {
   /* ════ FORM ════ */
   return(
     <div style={{minHeight:"100vh",background:"#f4f5f9",paddingBottom:48}}>
-      <Head><title>Create Your Profile | MyWebSam</title></Head>
+      <Head><title>Create Your Profile | Linkitin</title></Head>
       {showShare&&<ShareSheet url={getUrl()} onClose={()=>setShowShare(false)} onCopy={copyLink}/> }
       <Topbar right={
         saved ? (
@@ -1018,7 +1018,7 @@ export default function ProfileCreator() {
                 {unameStatus==="idle" && form.username && form.username.length>=3 && (
                   <div style={{fontSize:12,color:"#adb5c0",marginTop:5,display:"flex",alignItems:"center",gap:5}}>
                     <i className="fas fa-globe"/>
-                    mywebsam.site/<strong style={{color:AC}}>{form.username}</strong>
+                    linkitin.site/<strong style={{color:AC}}>{form.username}</strong>
                   </div>
                 )}
                 {form.username && form.username.length>0 && form.username.length<3 && (
@@ -1121,7 +1121,7 @@ export default function ProfileCreator() {
                 </div>
               </div>
 
-              
+
 
               <div className="divider" style={{margin:"20px 0"}}/>
 
