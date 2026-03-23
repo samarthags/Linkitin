@@ -160,11 +160,9 @@ export default function Landing() {
 
           /* ── HERO ── */
           .hero {
-            min-height: 100vh;
-            min-height: 100dvh;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            padding: 32px 20px 32px;
+            padding: 72px 20px 64px;
             text-align: center;
             position: relative;
           }
@@ -430,7 +428,7 @@ export default function Landing() {
 
           /* ── MOBILE TWEAKS ── */
           @media (max-width: 420px) {
-            .hero { padding: 28px 16px 28px; }
+            .hero { padding: 56px 16px 52px; }
             .wrap { padding: 64px 16px; }
             .cta-box { padding: 38px 18px; }
             .feat-grid { border-radius: 14px; }
