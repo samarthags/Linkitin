@@ -109,7 +109,6 @@ function track(username, event) {
 }
 
 // ─── Loading Screen ────────────────────────────────────────────────────────────
-// Dots-only loader — no avatar image, no name shown during load
 function LoadingScreen({ visible }) {
   return (
     <div
@@ -217,10 +216,11 @@ function ShareSheet({ url, name, onClose }) {
 
 // ─── Profile page ─────────────────────────────────────────────────────────────
 export default function ProfilePage({ user, pageUrl, avatarUrl }) {
-  const [shareOpen, setShareOpen] = useState(false);
-  const [spOpen,    setSpOpen]    = useState(false);
-  // Loading state: true until avatar + fonts are ready
-  const [loading,   setLoading]   = useState(true);
+  const [shareOpen,    setShareOpen]    = useState(false);
+  const [spOpen,       setSpOpen]       = useState(false);
+  const [loading,      setLoading]      = useState(true);
+  // ── NEW: toggle age ↔ birthday on click ──
+  const [showBirthday, setShowBirthday] = useState(false);
 
   useEffect(()=>{
     if (user?.username) track(user.username, "view");
@@ -233,31 +233,20 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     const done = () => {
       if (resolved) return;
       resolved = true;
-      // Small extra delay so the splash feels intentional, not a flicker
       setTimeout(() => setLoading(false), 320);
     };
 
-    // Safety timeout — never block more than 4 seconds
     const safety = setTimeout(done, 4000);
-
     const pending = [];
 
-    // Wait for avatar image if it exists
     if (user.avatar) {
       const img = new Image();
       img.src = user.avatar;
-      if (img.complete) {
-        // already cached
-      } else {
-        const p = new Promise(res => {
-          img.onload = res;
-          img.onerror = res; // resolve even on error
-        });
-        pending.push(p);
+      if (!img.complete) {
+        pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
       }
     }
 
-    // Wait for link icon images
     (user.links || []).forEach(lnk => {
       if (lnk.icon?.startsWith("https://")) {
         const img = new Image();
@@ -268,10 +257,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       }
     });
 
-    // Wait for Font Awesome + Google Fonts to be ready
-    const fontReady = document.fonts
-      ? document.fonts.ready
-      : Promise.resolve();
+    const fontReady = document.fonts ? document.fonts.ready : Promise.resolve();
 
     Promise.all([fontReady, ...pending]).then(() => {
       clearTimeout(safety);
@@ -290,7 +276,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const badgeIcon = badge && BADGE_ICONS[badge];
   const badgeLabel= badge ? badge.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase()) : null;
 
-  // Rich description for SEO
   const richDesc = user
     ? [
         badgeLabel ? `${user.name} — ${badgeLabel}` : user.name,
@@ -310,10 +295,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       ].filter(Boolean).join(", ")
     : "linkitin, profile";
 
-  // JSON-LD structured data — CEO-grade multi-schema
   const sameAsUrls = socials.map(([k,v]) => PLAT[k].u(v)).filter(u => !u.startsWith("mailto:"));
   const jsonLd = user ? [
-    // 1. WebSite schema — enables Google Sitelinks Search Box
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
@@ -330,7 +313,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         "query-input": "required name=search_term_string"
       }
     },
-    // 2. ProfilePage schema
     {
       "@context": "https://schema.org",
       "@type": "ProfilePage",
@@ -348,7 +330,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       },
       "mainEntity": { "@id": `${pageUrl}#person` }
     },
-    // 3. Person schema — the richest signal for Google Knowledge Panel
     {
       "@context": "https://schema.org",
       "@type": "Person",
@@ -408,7 +389,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta name="description"    content={richDesc}/>
         <meta name="keywords"       content={keywords}/>
         <meta name="author"         content={user.name}/>
-        {/* Max crawl budget: index everything, large preview images, full snippet */}
         <meta name="robots"         content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
         <meta name="googlebot"      content="index, follow, max-image-preview:large, max-snippet:-1"/>
         <link rel="canonical"       href={pageUrl}/>
@@ -423,7 +403,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <link rel="icon"                href="/icon.png" type="image/png"/>
         <link rel="apple-touch-icon"    href="/icon.png"/>
 
-        {/* ── Open Graph — richer for all link previews ── */}
+        {/* ── Open Graph ── */}
         <meta property="og:type"              content="profile"/>
         <meta property="og:title"             content={ptitle}/>
         <meta property="og:description"       content={richDesc}/>
@@ -448,10 +428,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         {user.socialProfiles?.twitter &&
           <meta name="twitter:creator" content={`@${user.socialProfiles.twitter.replace("@","")}`}/>}
 
-        {/* ── Article / Author signal (helps Google attribute content) ── */}
+        {/* ── Article / Author signal ── */}
         <meta property="article:author" content={pageUrl}/>
 
-        {/* ── JSON-LD Structured Data — multi-schema ── */}
+        {/* ── JSON-LD Structured Data ── */}
         {jsonLd && jsonLd.map((schema, i) => (
           <script
             key={i}
@@ -501,10 +481,64 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .id-block{text-align:center;padding:14px 20px 0;position:relative;z-index:2;}
           .pname{font-size:clamp(32px,9vw,52px);font-family:'Sora',sans-serif;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px;}
           .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
-          .age-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.42);}
-          .age-pill i{font-size:9px;opacity:.65;}
-          .badge-pill{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.14) 50%,rgba(255,255,255,.06) 100%);background-size:200% auto;border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,.65);animation:shimmer 2.8s linear infinite;letter-spacing:.01em;}
-          .badge-pill i{font-size:10px;opacity:.7;}
+
+          /* ── Age pill — clickable, toggles age ↔ birthday ── */
+          .age-pill{
+            display:inline-flex;align-items:center;gap:5px;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.09);
+            border-radius:999px;padding:4px 12px;
+            font-size:12px;font-weight:600;
+            color:rgba(255,255,255,.42);
+            cursor:pointer;
+            transition:background .15s,border-color .15s,color .15s,transform .1s;
+            user-select:none;
+          }
+          .age-pill:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.65);}
+          .age-pill:active{transform:scale(.94);}
+          .age-pill i{font-size:9px;opacity:.65;transition:opacity .15s;}
+          .age-pill:hover i{opacity:1;}
+
+          /* ── Advanced badge pill ── */
+          @keyframes badgePulse{
+            0%,100%{box-shadow:0 0 0 0 rgba(168,139,250,0),0 0 10px 0 rgba(168,139,250,0);}
+            50%{box-shadow:0 0 0 3px rgba(168,139,250,.07),0 0 20px 0 rgba(168,139,250,.2);}
+          }
+          @keyframes badgeSweep{
+            0%{left:-60%;}
+            100%{left:130%;}
+          }
+          .badge-pill{
+            display:inline-flex;align-items:center;gap:7px;
+            position:relative;overflow:hidden;
+            background:linear-gradient(110deg,rgba(100,60,200,.2) 0%,rgba(168,139,250,.3) 45%,rgba(80,160,240,.2) 100%);
+            background-size:200% auto;
+            border:1px solid rgba(168,139,250,.32);
+            border-radius:999px;
+            padding:5px 16px 5px 12px;
+            font-size:12px;font-weight:700;
+            color:rgba(210,190,255,.92);
+            letter-spacing:.03em;
+            text-shadow:0 0 14px rgba(168,139,250,.55);
+            backdrop-filter:blur(4px);
+            animation:shimmer 3.2s linear infinite, badgePulse 3.2s ease-in-out infinite;
+          }
+          .badge-pill::before{
+            content:"";
+            position:absolute;
+            top:0;
+            left:-60%;
+            width:35%;
+            height:100%;
+            background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);
+            animation:badgeSweep 2.6s ease-in-out infinite;
+            pointer-events:none;
+          }
+          .badge-pill i{
+            font-size:11px;
+            opacity:.92;
+            filter:drop-shadow(0 0 5px rgba(168,139,250,.75));
+          }
 
           .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
           .bio-text{font-size:15px;line-height:1.7;color:rgba(255,255,255,.55);text-align:center;margin-bottom:20px;font-weight:400;}
@@ -583,7 +617,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             src={user.avatar}
             alt={`${user.name}'s profile photo`}
             className="hero-img"
-            // Use fetchpriority (LCP image)
             fetchpriority="high"
           />
           <div className="hero-fade"/>
@@ -598,7 +631,20 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       <div className="id-block s1">
         <h1 className="pname">{user.name}</h1>
         <div className="badge-row">
-          {userAge && <span className="age-pill"><i className="fas fa-cake-candles"/>{userAge}</span>}
+          {/* Age pill — click to toggle between age and birthday */}
+          {userAge && user.dob && (
+            <span
+              className="age-pill"
+              onClick={() => setShowBirthday(v => !v)}
+              title={showBirthday ? "Show age" : "Show birthday"}
+            >
+              <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
+              {showBirthday
+                ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : `${userAge} y/o`}
+            </span>
+          )}
+          {/* Advanced badge pill */}
           {badgeLabel && (
             <span className="badge-pill">
               {badgeIcon && <i className={badgeIcon}/>}
