@@ -109,7 +109,8 @@ function track(username, event) {
 }
 
 // ─── Loading Screen ────────────────────────────────────────────────────────────
-function LoadingScreen({ avatarUrl, name, visible }) {
+// Dots-only loader — no avatar image, no name shown during load
+function LoadingScreen({ visible }) {
   return (
     <div
       style={{
@@ -121,85 +122,34 @@ function LoadingScreen({ avatarUrl, name, visible }) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 20,
-        transition: "opacity 0.5s ease, visibility 0.5s ease",
+        gap: 16,
+        transition: "opacity 0.45s ease, visibility 0.45s ease",
         opacity: visible ? 1 : 0,
         visibility: visible ? "visible" : "hidden",
         pointerEvents: visible ? "all" : "none",
       }}
     >
       <style>{`
-        @keyframes lsPulse {
-          0%,100% { transform: scale(1); opacity: .9; }
-          50% { transform: scale(1.04); opacity: .6; }
-        }
-        @keyframes lsSpin {
-          to { transform: rotate(360deg); }
-        }
         @keyframes lsDots {
-          0%,80%,100% { opacity: 0; transform: translateY(0); }
-          40% { opacity: 1; transform: translateY(-5px); }
+          0%,80%,100% { opacity: 0.15; transform: translateY(0) scale(1); }
+          40% { opacity: 1; transform: translateY(-6px) scale(1.15); }
         }
-        .ls-avatar {
-          width: 90px;
-          height: 90px;
-          border-radius: 50%;
-          object-fit: cover;
-          object-position: center top;
-          border: 2px solid rgba(255,255,255,.1);
-          animation: lsPulse 1.8s ease-in-out infinite;
-        }
-        .ls-avatar-ph {
-          width: 90px;
-          height: 90px;
-          border-radius: 50%;
-          background: #1a1a1a;
-          border: 2px solid #222;
+        .ls-dots {
           display: flex;
           align-items: center;
-          justify-content: center;
-          font-size: 36px;
-          font-weight: 800;
-          color: #fff;
-          animation: lsPulse 1.8s ease-in-out infinite;
-        }
-        .ls-ring {
-          width: 106px;
-          height: 106px;
-          border-radius: 50%;
-          border: 2px solid transparent;
-          border-top-color: rgba(255,255,255,.25);
-          border-right-color: rgba(255,255,255,.08);
-          position: absolute;
-          animation: lsSpin 1.1s linear infinite;
-        }
-        .ls-name {
-          font-family: 'Sora', sans-serif;
-          font-size: 16px;
-          font-weight: 700;
-          color: rgba(255,255,255,.55);
-          letter-spacing: .02em;
+          gap: 8px;
         }
         .ls-dots span {
           display: inline-block;
-          width: 5px;
-          height: 5px;
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
-          background: rgba(255,255,255,.3);
-          margin: 0 3px;
-          animation: lsDots 1.2s ease-in-out infinite;
+          background: rgba(255,255,255,0.55);
+          animation: lsDots 1.3s ease-in-out infinite;
         }
-        .ls-dots span:nth-child(2) { animation-delay: .2s; }
-        .ls-dots span:nth-child(3) { animation-delay: .4s; }
+        .ls-dots span:nth-child(2) { animation-delay: .18s; }
+        .ls-dots span:nth-child(3) { animation-delay: .36s; }
       `}</style>
-      <div style={{ position: "relative", width: 106, height: 106, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div className="ls-ring" />
-        {avatarUrl && !avatarUrl.includes("/api/avatar/")
-          ? <img src={avatarUrl} alt={name} className="ls-avatar" />
-          : <div className="ls-avatar-ph">{name?.charAt(0)?.toUpperCase() || "?"}</div>
-        }
-      </div>
-      {name && <div className="ls-name">{name}</div>}
       <div className="ls-dots">
         <span /><span /><span />
       </div>
@@ -360,31 +310,75 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       ].filter(Boolean).join(", ")
     : "linkitin, profile";
 
-  // JSON-LD structured data
-  const jsonLd = user ? {
-    "@context": "https://schema.org",
-    "@type": "ProfilePage",
-    "name": `${user.name}'s Profile`,
-    "url": pageUrl,
-    "description": richDesc,
-    "mainEntity": {
+  // JSON-LD structured data — CEO-grade multi-schema
+  const sameAsUrls = socials.map(([k,v]) => PLAT[k].u(v)).filter(u => !u.startsWith("mailto:"));
+  const jsonLd = user ? [
+    // 1. WebSite schema — enables Google Sitelinks Search Box
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": `${pageUrl.split("/").slice(0,3).join("/")}/#website`,
+      "name": "Linkitin",
+      "url": pageUrl.split("/").slice(0,3).join("/"),
+      "description": "Create your free link-in-bio profile on Linkitin",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": `${pageUrl.split("/").slice(0,3).join("/")}/{search_term_string}`
+        },
+        "query-input": "required name=search_term_string"
+      }
+    },
+    // 2. ProfilePage schema
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfilePage",
+      "@id": `${pageUrl}#profilepage`,
+      "name": `${user.name}'s Profile`,
+      "url": pageUrl,
+      "description": richDesc,
+      "dateModified": new Date().toISOString(),
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Linkitin", "item": pageUrl.split("/").slice(0,3).join("/") },
+          { "@type": "ListItem", "position": 2, "name": user.name, "item": pageUrl }
+        ]
+      },
+      "mainEntity": { "@id": `${pageUrl}#person` }
+    },
+    // 3. Person schema — the richest signal for Google Knowledge Panel
+    {
+      "@context": "https://schema.org",
       "@type": "Person",
+      "@id": `${pageUrl}#person`,
       "name": user.name,
       "url": pageUrl,
-      "image": avatarUrl,
-      "description": bio || undefined,
-      "jobTitle": badgeLabel || undefined,
-      "sameAs": socials.map(([k,v]) => PLAT[k].u(v)).filter(u => !u.startsWith("mailto:")),
+      "image": {
+        "@type": "ImageObject",
+        "url": avatarUrl,
+        "width": 400,
+        "height": 400,
+        "caption": `${user.name} profile photo`
+      },
+      ...(bio ? { "description": bio } : {}),
+      ...(badgeLabel ? { "jobTitle": badgeLabel } : {}),
+      ...(userAge ? { "age": userAge } : {}),
+      ...(sameAsUrls.length ? { "sameAs": sameAsUrls } : {}),
+      ...(interests.length ? { "knowsAbout": interests } : {}),
+      "mainEntityOfPage": { "@id": `${pageUrl}#profilepage` },
     }
-  } : null;
+  ] : null;
 
   if (!user) {
     return (
       <>
         <Head>
-          <title>Not Found | linkitin</title>
+          <title>Not Found | Linkitin</title>
           <link rel="icon" href="/icon.png" type="image/png" />
-          <meta name="robots" content="noindex"/>
+          <meta name="robots" content="noindex, nofollow"/>
+          <meta name="viewport" content="width=device-width,initial-scale=1"/>
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
           <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
           <style>{`*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Sora',sans-serif;background:#0d0d0d;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;}`}</style>
@@ -414,29 +408,39 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta name="description"    content={richDesc}/>
         <meta name="keywords"       content={keywords}/>
         <meta name="author"         content={user.name}/>
+        {/* Max crawl budget: index everything, large preview images, full snippet */}
         <meta name="robots"         content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
+        <meta name="googlebot"      content="index, follow, max-image-preview:large, max-snippet:-1"/>
         <link rel="canonical"       href={pageUrl}/>
 
-        {/* ── Viewport / Theme ── */}
-        <meta name="viewport"       content="width=device-width,initial-scale=1"/>
-        <meta name="theme-color"    content="#080808"/>
-        <link rel="icon"            href="/icon.png" type="image/png"/>
+        {/* ── Viewport / Theme / PWA hints ── */}
+        <meta name="viewport"           content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+        <meta name="theme-color"        content="#080808"/>
+        <meta name="mobile-web-app-capable" content="yes"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+        <meta name="format-detection"   content="telephone=no"/>
+        <link rel="icon"                href="/icon.png" type="image/png"/>
+        <link rel="apple-touch-icon"    href="/icon.png"/>
 
-        {/* ── Open Graph ── */}
-        <meta property="og:type"         content="profile"/>
-        <meta property="og:title"        content={ptitle}/>
-        <meta property="og:description"  content={richDesc}/>
-        <meta property="og:url"          content={pageUrl}/>
-        <meta property="og:site_name"    content="Linkitin"/>
-        <meta property="og:image"        content={avatarUrl}/>
-        <meta property="og:image:width"  content="400"/>
-        <meta property="og:image:height" content="400"/>
-        <meta property="og:image:type"   content="image/jpeg"/>
-        <meta property="og:image:alt"    content={`${user.name}'s profile photo`}/>
+        {/* ── Open Graph — richer for all link previews ── */}
+        <meta property="og:type"              content="profile"/>
+        <meta property="og:title"             content={ptitle}/>
+        <meta property="og:description"       content={richDesc}/>
+        <meta property="og:url"               content={pageUrl}/>
+        <meta property="og:site_name"         content="Linkitin"/>
+        <meta property="og:locale"            content="en_US"/>
+        <meta property="og:image"             content={avatarUrl}/>
+        <meta property="og:image:secure_url"  content={avatarUrl}/>
+        <meta property="og:image:width"       content="400"/>
+        <meta property="og:image:height"      content="400"/>
+        <meta property="og:image:type"        content="image/jpeg"/>
+        <meta property="og:image:alt"         content={`${user.name}'s profile photo`}/>
         {user.username && <meta property="profile:username" content={user.username}/>}
 
-        {/* ── Twitter Card ── */}
+        {/* ── Twitter / X Card ── */}
         <meta name="twitter:card"        content="summary_large_image"/>
+        <meta name="twitter:site"        content="@linkitin"/>
         <meta name="twitter:title"       content={ptitle}/>
         <meta name="twitter:description" content={richDesc}/>
         <meta name="twitter:image"       content={avatarUrl}/>
@@ -444,18 +448,26 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         {user.socialProfiles?.twitter &&
           <meta name="twitter:creator" content={`@${user.socialProfiles.twitter.replace("@","")}`}/>}
 
-        {/* ── JSON-LD Structured Data ── */}
-        {jsonLd && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-          />
-        )}
+        {/* ── Article / Author signal (helps Google attribute content) ── */}
+        <meta property="article:author" content={pageUrl}/>
 
-        {/* ── Preconnect / Fonts ── */}
+        {/* ── JSON-LD Structured Data — multi-schema ── */}
+        {jsonLd && jsonLd.map((schema, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
+
+        {/* ── Preconnect / Critical resource hints ── */}
         <link rel="preconnect" href="https://fonts.googleapis.com"/>
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        {user.avatar && <link rel="preload" as="image" href={user.avatar}/>}
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com"/>
+        {user.avatar && <link rel="preload" as="image" href={user.avatar} fetchpriority="high"/>}
+        <link rel="dns-prefetch" href="https://open.spotify.com"/>
+
+        {/* ── Fonts & Icons ── */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
         <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 
@@ -554,8 +566,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       </Head>
 
       {/* ── LOADING SPLASH ── */}
-      <LoadingScreen 
- visible={loading} />
+      <LoadingScreen visible={loading} />
 
       {/* ── Share FAB ── */}
       <button className="sfab" onClick={()=>{
