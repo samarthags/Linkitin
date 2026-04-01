@@ -109,7 +109,7 @@ function track(username, event) {
 }
 
 // ─── Loading Screen ────────────────────────────────────────────────────────────
-function LoadingScreen({ avatarUrl, name, visible }) {
+function LoadingScreen({ visible }) {
   return (
     <div
       style={{
@@ -129,10 +129,6 @@ function LoadingScreen({ avatarUrl, name, visible }) {
       }}
     >
       <style>{`
-        @keyframes lsPulse {
-          0%,100% { transform: scale(1); opacity: .9; }
-          50% { transform: scale(1.04); opacity: .6; }
-        }
         @keyframes lsSpin {
           to { transform: rotate(360deg); }
         }
@@ -140,66 +136,27 @@ function LoadingScreen({ avatarUrl, name, visible }) {
           0%,80%,100% { opacity: 0; transform: translateY(0); }
           40% { opacity: 1; transform: translateY(-5px); }
         }
-        .ls-avatar {
-          width: 90px;
-          height: 90px;
-          border-radius: 50%;
-          object-fit: cover;
-          object-position: center top;
-          border: 2px solid rgba(255,255,255,.1);
-          animation: lsPulse 1.8s ease-in-out infinite;
-        }
-        .ls-avatar-ph {
-          width: 90px;
-          height: 90px;
-          border-radius: 50%;
-          background: #1a1a1a;
-          border: 2px solid #222;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 36px;
-          font-weight: 800;
-          color: #fff;
-          animation: lsPulse 1.8s ease-in-out infinite;
-        }
         .ls-ring {
-          width: 106px;
-          height: 106px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
-          border: 2px solid transparent;
-          border-top-color: rgba(255,255,255,.25);
-          border-right-color: rgba(255,255,255,.08);
-          position: absolute;
-          animation: lsSpin 1.1s linear infinite;
-        }
-        .ls-name {
-          font-family: 'Sora', sans-serif;
-          font-size: 16px;
-          font-weight: 700;
-          color: rgba(255,255,255,.55);
-          letter-spacing: .02em;
+          border: 3px solid rgba(255,255,255,.08);
+          border-top-color: rgba(255,255,255,.55);
+          animation: lsSpin 0.9s linear infinite;
         }
         .ls-dots span {
           display: inline-block;
           width: 5px;
           height: 5px;
           border-radius: 50%;
-          background: rgba(255,255,255,.3);
+          background: rgba(255,255,255,.25);
           margin: 0 3px;
           animation: lsDots 1.2s ease-in-out infinite;
         }
         .ls-dots span:nth-child(2) { animation-delay: .2s; }
         .ls-dots span:nth-child(3) { animation-delay: .4s; }
       `}</style>
-      <div style={{ position: "relative", width: 106, height: 106, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div className="ls-ring" />
-        {avatarUrl && !avatarUrl.includes("/api/avatar/")
-          ? <img src={avatarUrl} alt={name} className="ls-avatar" />
-          : <div className="ls-avatar-ph">{name?.charAt(0)?.toUpperCase() || "?"}</div>
-        }
-      </div>
-      {name && <div className="ls-name">{name}</div>}
+      <div className="ls-ring" />
       <div className="ls-dots">
         <span /><span /><span />
       </div>
@@ -283,27 +240,41 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     const done = () => {
       if (resolved) return;
       resolved = true;
-      setTimeout(() => setLoading(false), 280);
+      setTimeout(() => setLoading(false), 320);
     };
 
-    // Safety timeout — never block more than 3 seconds
-    const safety = setTimeout(done, 3000);
+    // Safety timeout — never block more than 4 seconds
+    const safety = setTimeout(done, 4000);
 
-    // Only wait for the avatar/hero image — nothing else blocks the splash
+    const pending = [];
+
+    // Wait for avatar image if it exists
     if (user.avatar) {
       const img = new Image();
       img.src = user.avatar;
-      if (img.complete) {
-        done();
-      } else {
-        img.onload  = () => { clearTimeout(safety); done(); };
-        img.onerror = () => { clearTimeout(safety); done(); };
+      if (!img.complete) {
+        pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
       }
-    } else {
-      // No avatar → dismiss immediately after a tiny intentional delay
-      const t = setTimeout(() => { clearTimeout(safety); done(); }, 400);
-      return () => { clearTimeout(t); clearTimeout(safety); };
     }
+
+    // Wait for link icon images
+    (user.links || []).forEach(lnk => {
+      if (lnk.icon?.startsWith("https://")) {
+        const img = new Image();
+        img.src = lnk.icon;
+        if (!img.complete) {
+          pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
+        }
+      }
+    });
+
+    // Wait for Font Awesome + Google Fonts to be ready
+    const fontReady = document.fonts ? document.fonts.ready : Promise.resolve();
+
+    Promise.all([fontReady, ...pending]).then(() => {
+      clearTimeout(safety);
+      done();
+    });
 
     return () => clearTimeout(safety);
   }, [user]);
@@ -531,7 +502,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       </Head>
 
       {/* ── LOADING SPLASH ── */}
-      <LoadingScreen avatarUrl={avatarUrl} name={user.name} visible={loading} />
+      <LoadingScreen visible={loading} />
 
       {/* ── Share FAB ── */}
       <button className="sfab" onClick={()=>{
