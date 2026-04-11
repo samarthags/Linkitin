@@ -544,8 +544,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .roast-card-text{flex:1;min-width:0;}
           .roast-card-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.82);letter-spacing:-.01em;}
           .roast-card-sub{font-size:10.5px;color:rgba(255,110,40,.6);font-weight:500;margin-top:2px;letter-spacing:.01em;}
-          .roast-card-arrow{font-size:11px;color:rgba(255,90,20,.35);flex-shrink:0;transition:transform .15s,color .15s;}
-          .roast-card:hover .roast-card-arrow{transform:translateX(2px);color:rgba(255,90,20,.65);}
+
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
           @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
@@ -777,7 +776,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             <div className="roast-card-title">Roast {user.name}&apos;</div>
             <div className="roast-card-sub"><i className="fas fa-bolt" style={{marginRight:4,fontSize:9}}/>Tap to get roasted by expo</div>
           </div>
-          <i className="fas fa-chevron-right roast-card-arrow"/>
+
         </div>
 
         {(user.links||[]).length > 0 && (
@@ -868,10 +867,29 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             ) : (
               <p className="roast-text">"{roastText}"</p>
             )}
-            <button className="roast-btn" style={{background:"#1a1a1a",color:"rgba(255,255,255,.45)",border:"1px solid #222",marginTop:18}}
+            {!roastLoading && roastText && (
+              <button
+                className="roast-btn"
+                style={{background:"linear-gradient(135deg,#ff6820,#ff3d00)",color:"#fff",border:"none",marginTop:18,boxShadow:"0 4px 18px rgba(255,80,10,.35)"}}
+                onClick={()=>{
+                  const shareText = `🔥 I got roasted on Linkitin!\n\n"${roastText}"\n\nGet roasted too 👇\n${pageUrl}`;
+                  if (navigator.share) {
+                    navigator.share({ title: "My Linkitin Roast 🔥", text: shareText, url: pageUrl }).catch(()=>{});
+                  } else {
+                    const enc = encodeURIComponent;
+                    window.open(`https://twitter.com/intent/tweet?text=${enc(shareText)}`);
+                  }
+                }}>
+                <i className="fas fa-share-nodes" style={{fontSize:14}}/> Share My Roast
+              </button>
+            )}
+            <button className="roast-btn" style={{background:"#1a1a1a",color:"rgba(255,255,255,.35)",border:"1px solid #222",marginTop:10}}
               onClick={()=>setRoastOpen(false)}>
               Close
             </button>
+            <p style={{textAlign:"center",fontSize:10.5,color:"rgba(255,255,255,.2)",marginTop:14,fontStyle:"italic",lineHeight:1.5}}>
+              😄 This roast is purely for fun — don&apos;t take it seriously!
+            </p>
           </div>
         </div>
       )}
