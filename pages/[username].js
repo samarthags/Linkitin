@@ -796,8 +796,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             <i className="fas fa-fire-flame-curved"/>
           </div>
           <div className="roast-card-text">
-            <div className="roast-card-title">Roast {user.name}&apos;</div>
-            <div className="roast-card-sub"><i className="fas fa-bolt" style={{marginRight:4,fontSize:9}}/>Tap to get roasted by expo</div>
+            <div className="roast-card-title">Roast {user.name};</div>
+            <div className="roast-card-sub"><i className= style={{marginRight:4,fontSize:9}}/>Tap to get roasted by expo</div>
           </div>
 
         </div>
