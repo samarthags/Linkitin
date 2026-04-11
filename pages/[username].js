@@ -500,44 +500,20 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .age-pill:hover i{opacity:1;}
 
           /* ── Advanced badge pill ── */
-          @keyframes badgePulse{
-            0%,100%{box-shadow:0 0 0 0 rgba(168,139,250,0),0 0 10px 0 rgba(168,139,250,0);}
-            50%{box-shadow:0 0 0 3px rgba(168,139,250,.07),0 0 20px 0 rgba(168,139,250,.2);}
-          }
-          @keyframes badgeSweep{
-            0%{left:-60%;}
-            100%{left:130%;}
-          }
           .badge-pill{
-            display:inline-flex;align-items:center;gap:7px;
-            position:relative;overflow:hidden;
-            background:linear-gradient(110deg,rgba(100,60,200,.2) 0%,rgba(168,139,250,.3) 45%,rgba(80,160,240,.2) 100%);
-            background-size:200% auto;
-            border:1px solid rgba(168,139,250,.32);
+            display:inline-flex;align-items:center;gap:5px;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.09);
             border-radius:999px;
-            padding:5px 16px 5px 12px;
-            font-size:12px;font-weight:700;
-            color:rgba(210,190,255,.92);
-            letter-spacing:.03em;
-            text-shadow:0 0 14px rgba(168,139,250,.55);
-            backdrop-filter:blur(4px);
-            animation:shimmer 3.2s linear infinite, badgePulse 3.2s ease-in-out infinite;
-          }
-          .badge-pill::before{
-            content:"";
-            position:absolute;
-            top:0;
-            left:-60%;
-            width:35%;
-            height:100%;
-            background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);
-            animation:badgeSweep 2.6s ease-in-out infinite;
-            pointer-events:none;
+            padding:4px 12px;
+            font-size:12px;font-weight:600;
+            color:rgba(255,255,255,.42);
+            letter-spacing:.01em;
+            transition:background .15s,border-color .15s,color .15s;
           }
           .badge-pill i{
-            font-size:11px;
-            opacity:.92;
-            filter:drop-shadow(0 0 5px rgba(168,139,250,.75));
+            font-size:9px;
+            opacity:.65;
           }
 
           .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
