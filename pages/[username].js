@@ -532,15 +532,15 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .roast-text{font-size:15px;line-height:1.75;color:rgba(255,255,255,.82);text-align:center;font-weight:500;min-height:60px;}
           .roast-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;border:none;font-family:'Sora',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:18px;}
           /* ── Roast card ── */
-          .roast-card{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;background:#111;border:1px solid #1e1e1e;border-radius:14px;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:20px;}
-          .roast-card:hover{background:#161616;border-color:#2a2a2a;}
-          .roast-card:active{background:rgba(255,255,255,.05);}
-          .roast-icon-wrap{width:40px;height:40px;border-radius:10px;background:#1a1a1a;border:1px solid #252525;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,110,30,.75);flex-shrink:0;}
+          .roast-card{display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;background:#111;border:1px solid rgba(255,90,20,.18);border-radius:14px;cursor:pointer;transition:all .18s;margin-bottom:20px;box-shadow:0 0 12px rgba(255,80,10,.06);}
+          .roast-card:hover{background:#161616;border-color:rgba(255,90,20,.35);box-shadow:0 0 18px rgba(255,80,10,.12);}
+          .roast-card:active{transform:scale(.98);}
+          .roast-icon-wrap{width:40px;height:40px;border-radius:10px;background:rgba(255,80,20,.1);border:1px solid rgba(255,90,20,.2);display:flex;align-items:center;justify-content:center;font-size:17px;color:rgba(255,110,40,.9);flex-shrink:0;text-shadow:0 0 8px rgba(255,100,30,.5);}
           .roast-card-text{flex:1;min-width:0;}
-          .roast-card-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:-.01em;}
-          .roast-card-sub{font-size:10.5px;color:rgba(255,255,255,.25);font-weight:500;margin-top:1px;}
-          .roast-card-arrow{font-size:11px;color:rgba(255,255,255,.18);flex-shrink:0;transition:transform .15s,color .15s;}
-          .roast-card:hover .roast-card-arrow{transform:translateX(2px);color:rgba(255,255,255,.35);}
+          .roast-card-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.82);letter-spacing:-.01em;}
+          .roast-card-sub{font-size:10.5px;color:rgba(255,110,40,.6);font-weight:500;margin-top:2px;letter-spacing:.01em;}
+          .roast-card-arrow{font-size:11px;color:rgba(255,90,20,.35);flex-shrink:0;transition:transform .15s,color .15s;}
+          .roast-card:hover .roast-card-arrow{transform:translateX(2px);color:rgba(255,90,20,.65);}
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
           @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
@@ -770,7 +770,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           </div>
           <div className="roast-card-text">
             <div className="roast-card-title">Roast {user.name}&apos;s Profile</div>
-            <div className="roast-card-sub">AI-powered · just for fun</div>
+            <div className="roast-card-sub"><i className="fas fa-bolt" style={{marginRight:4,fontSize:9}}/>Tap to get roasted by AI</div>
           </div>
           <i className="fas fa-chevron-right roast-card-arrow"/>
         </div>
