@@ -106,7 +106,7 @@ function stripAI(t) {
 /* ─── Constants ─── */
 const LS_KEY   = "mws_v6";
 const AC       = "#6C63FF";
-const GROQ_KEY = "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";
+const GROQ_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
 const SM = {
   email:{i:"fas fa-envelope",c:"#EA4335",b:"#fef2f2"},instagram:{i:"fab fa-instagram",c:"#E4405F",b:"#fdf2f4"},
