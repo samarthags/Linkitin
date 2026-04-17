@@ -221,7 +221,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [spOpen,       setSpOpen]       = useState(false);
   const [loading,      setLoading]      = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
-
+  const [roastText,      setRoastText]      = useState("");
+  const [roastLoading,   setRoastLoading]   = useState(false);
+  const [roastOpen,      setRoastOpen]      = useState(false);
 
 
   useEffect(()=>{
@@ -251,8 +253,58 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   };
   const theme = (user && THEMES[user?.interests?.role]) || { accent:"#fff", glow:"rgba(255,255,255,.10)", hero:"#0d0d0d", badge:"rgba(255,220,90,.88)" };
 
+  /* ── Roast my profile (cached in localStorage per user) ── */
+  const ROAST_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  const roastCacheKey = user?.username ? `roast_cache_${user.username}` : null;
 
+  const roastProfile = async () => {
+    setRoastOpen(true);
+
+    // ── Check localStorage cache first ──
+    if (roastCacheKey) {
+      try {
+        const cached = localStorage.getItem(roastCacheKey);
+        if (cached) {
+          const { text, ts } = JSON.parse(cached);
+          if (text && Date.now() - ts < ROAST_TTL) {
+            setRoastText(text);
+            setRoastLoading(false);
+            return; // serve from cache, skip API
+          }
+        }
+      } catch (_) {}
+    }
+
+    // ── No valid cache — fetch from API ──
+    setRoastLoading(true);
+    setRoastText("");
+    const role      = user?.interests?.role?.replace(/_/g," ") || "";
+    const name      = user?.name || "this person";
+    const bio       = user?.aboutme || user?.bio || "";
+    const socials   = Object.keys(user?.socialProfiles||{}).filter(k=>(user.socialProfiles[k]||"").trim()).join(", ") || "none";
+    const links     = (user?.links||[]).length;
+    const tags      = Object.values(user?.interests||{}).flat().filter(v=>v&&typeof v==="string").length;
+    const hasAvatar = !!user?.avatar;
+    try {
+      const res  = await fetch("/api/roast-profile", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ name, role, bio, socials, links, tags, hasAvatar }),
+      });
+      const data = await res.json();
+      const roast = data?.roast || "The AI took one look at this profile and had nothing to say. That's the real roast.";
+      setRoastText(roast);
+      // ── Save to localStorage ──
+      if (roastCacheKey) {
+        try { localStorage.setItem(roastCacheKey, JSON.stringify({ text: roast, ts: Date.now() })); } catch (_) {}
+      }
+    } catch(err) {
+      console.error("roast error:", err);
       setRoastText("Something went wrong. Even roasting you failed. Impressive.");
+    } finally {
+      setRoastLoading(false);
+    }
+  };
 
   useEffect(()=>{
     if (!user) { setLoading(false); return; }
@@ -499,7 +551,19 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .lbtn:hover{border-color:var(--theme-accent,#2e2e2e)!important;box-shadow:0 4px 16px var(--theme-glow,rgba(0,0,0,.45))!important;}
           .foot-cta:hover{color:var(--theme-accent,#555)!important;}
 
-
+          /* ── Roast modal ── */
+          @keyframes roastIn{from{opacity:0;transform:translateY(30px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+          .roast-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);}
+          .roast-sheet{background:#0a0a0a;border:1px solid #1e1e1e;border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:24px 20px 48px;animation:roastIn .35s cubic-bezier(.34,1.4,.64,1) both;}
+          .roast-fire{font-size:42px;text-align:center;margin-bottom:10px;animation:roastFlicker 1.2s ease-in-out infinite alternate;}
+          @keyframes roastFlicker{from{transform:scale(1) rotate(-3deg);}to{transform:scale(1.08) rotate(3deg);}}
+          .roast-text{font-size:15px;line-height:1.75;color:rgba(255,255,255,.82);text-align:center;font-weight:500;min-height:60px;}
+          .roast-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;border:none;font-family:'Sora',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:18px;}
+          /* ── Roast FAB ── */
+          .rfab{position:fixed;top:16px;left:16px;width:46px;height:46px;border-radius:13px;background:#111;border:1px solid #1e1e1e;display:flex;align-items:center;justify-content:center;font-size:17px;color:rgba(255,255,255,.6);cursor:pointer;z-index:80;transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .13s,border-color .13s,box-shadow .13s;}
+          .rfab::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.06),transparent);pointer-events:none;}
+          .rfab:hover{transform:translateY(-3px) scale(1.07);background:#181818;border-color:#2c2c2c;color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.5);}
+          .rfab:active{transform:scale(.93);}
 
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
@@ -515,28 +579,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .s6{animation:slideUp .6s .44s cubic-bezier(.16,1,.3,1) both;}
           .s7{animation:slideUp .6s .52s cubic-bezier(.16,1,.3,1) both;}
 
-          .hero{position:relative;width:100%;height:58vh;min-height:300px;max-height:500px;overflow:visible;animation:fadeIn .7s ease both;}
+          .hero{position:relative;width:100%;height:58vh;min-height:300px;max-height:500px;overflow:hidden;animation:fadeIn .7s ease both;}
           .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;}
-          .hero-fade{
-            position:absolute;
-            left:0;right:0;
-            bottom:-2px;
-            height:75%;
-            pointer-events:none;
-            background:linear-gradient(
-              to bottom,
-              transparent 0%,
-              rgba(13,13,13,.15) 30%,
-              rgba(13,13,13,.55) 55%,
-              rgba(13,13,13,.88) 75%,
-              rgba(13,13,13,1) 100%
-            );
-          }
+          .hero-fade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(13,13,13,0) 0%,rgba(13,13,13,0) 18%,rgba(13,13,13,.2) 40%,rgba(13,13,13,.7) 65%,rgba(13,13,13,.95) 85%,rgba(13,13,13,1) 100%);}
 
           .hero-ph{width:100%;height:58vh;min-height:320px;max-height:520px;background:#080808;display:flex;align-items:center;justify-content:center;}
           .av-ph{width:100px;height:100px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#fff;}
 
-          .id-block{text-align:center;padding:14px 20px 0;position:relative;z-index:2;margin-top:-32px;}
+          .id-block{text-align:center;padding:14px 20px 0;position:relative;z-index:2;}
           .pname{font-size:clamp(32px,9vw,52px);font-family:'Sora',sans-serif;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px;}
           .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
 
@@ -557,47 +607,44 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .age-pill i{font-size:9px;opacity:.65;transition:opacity .15s;}
           .age-pill:hover i{opacity:1;}
 
-          /* ── Badge pill — theme-colored, glassy ── */
-          @keyframes badgePulse{
-            0%,100%{box-shadow:0 0 0 0 var(--theme-glow,rgba(255,255,255,.08)),inset 0 1px 0 rgba(255,255,255,.08);}
-            50%{box-shadow:0 0 18px 3px var(--theme-glow,rgba(255,255,255,.08)),inset 0 1px 0 rgba(255,255,255,.08);}
+          /* ── Advanced badge pill — gold glow ── */
+          @keyframes goldBreath{
+            0%,100%{box-shadow:0 0 6px 0 rgba(212,175,55,.18),0 0 0 0 rgba(212,175,55,.0);}
+            50%{box-shadow:0 0 14px 2px rgba(212,175,55,.32),0 0 28px 4px rgba(212,175,55,.10);}
           }
-          @keyframes badgeSweep{
-            0%{left:-80%;}
-            100%{left:150%;}
+          @keyframes goldSweep{
+            0%{left:-70%;}
+            100%{left:130%;}
           }
           .badge-pill{
             display:inline-flex;align-items:center;gap:6px;
             position:relative;overflow:hidden;
-            background:rgba(255,255,255,.05);
-            border:1px solid rgba(255,255,255,.13);
+            background:linear-gradient(110deg,rgba(212,175,55,.10) 0%,rgba(255,215,80,.16) 50%,rgba(180,140,30,.10) 100%);
+            border:1px solid rgba(212,175,55,.30);
             border-radius:999px;
-            padding:5px 14px 5px 10px;
-            font-size:11.5px;font-weight:700;
-            color:var(--theme-accent,rgba(255,255,255,.85));
-            letter-spacing:.04em;
-            text-transform:uppercase;
+            padding:4px 13px 4px 10px;
+            font-size:12px;font-weight:700;
+            color:rgba(255,220,90,.88);
+            letter-spacing:.02em;
             cursor:default;
-            animation:badgePulse 3.5s ease-in-out infinite;
+            animation:goldBreath 3s ease-in-out infinite;
             transition:transform .15s cubic-bezier(.34,1.56,.64,1),filter .15s;
             -webkit-tap-highlight-color:transparent;
-            backdrop-filter:blur(6px);
-            -webkit-backdrop-filter:blur(6px);
           }
           .badge-pill::before{
             content:"";
-            position:absolute;top:0;left:-80%;
-            width:35%;height:100%;
-            background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);
-            animation:badgeSweep 3.8s ease-in-out infinite;
+            position:absolute;top:0;left:-70%;
+            width:32%;height:100%;
+            background:linear-gradient(90deg,transparent,rgba(255,230,100,.18),transparent);
+            animation:goldSweep 3.4s ease-in-out infinite;
             pointer-events:none;
           }
           .badge-pill:active{transform:scale(.92);}
-          @media(hover:hover){.badge-pill:hover{transform:scale(1.06);filter:brightness(1.15);}}
+          @media(hover:hover){.badge-pill:hover{transform:scale(1.06);filter:brightness(1.12);}}
           .badge-pill i{
-            font-size:9.5px;
-            opacity:.85;
-            color:var(--theme-accent,rgba(255,255,255,.75));
+            font-size:9px;
+            opacity:.80;
+            color:rgba(255,215,80,.85);
           }
 
           .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
@@ -665,6 +712,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       {/* ── Theme background overlay ── */}
       <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.6,pointerEvents:"none"}}/>
 
+      {/* ── Roast FAB ── */}
+      <button className="rfab" onClick={roastProfile} aria-label="Roast profile">
+        <i className="fas fa-fire-flame-curved"/>
+      </button>
 
       {/* ── Share FAB ── */}
       <button className="sfab" onClick={()=>{
@@ -806,6 +857,41 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
       {shareOpen&&<ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
 
+      {/* ── Roast Modal ── */}
+      {roastOpen && (
+        <div className="roast-overlay" onClick={()=>setRoastOpen(false)}>
+          <div className="roast-sheet" onClick={e=>e.stopPropagation()}>
+            {/* drag handle */}
+            <div style={{display:"flex",justifyContent:"center",marginBottom:6}}>
+              <div style={{width:40,height:4,borderRadius:2,background:"#2a2a2a"}}/>
+            </div>
+            {/* header */}
+            <div style={{fontWeight:800,fontSize:16,color:"#fff",textAlign:"center",marginBottom:4}}>
+              <i className="fas fa-fire" style={{color:"#ff6820",marginRight:7,fontSize:14}}/>{user.name}&apos;s Roast
+            </div>
+            <div className="roast-fire"><i className="fas fa-fire-flame-curved" style={{color:"#ff6820"}}/></div>
+            {roastLoading ? (
+              <div style={{textAlign:"center",padding:"20px 0"}}>
+                <div style={{display:"flex",justifyContent:"center",gap:7,marginBottom:12}}>
+                  {[0,.18,.36].map((d,i)=>(
+                    <div key={i} style={{width:8,height:8,borderRadius:"50%",background:"rgba(255,100,0,.7)",animation:`lsDots 1.3s ${d}s ease-in-out infinite`}}/>
+                  ))}
+                </div>
+                <div style={{fontSize:13,color:"rgba(255,255,255,.35)"}}>Cooking up the roast...</div>
+              </div>
+            ) : (
+              <p className="roast-text">&ldquo;{roastText}&rdquo;</p>
+            )}
+            <button className="roast-btn" style={{background:"#1a1a1a",color:"rgba(255,255,255,.35)",border:"1px solid #222",marginTop:18}}
+              onClick={()=>setRoastOpen(false)}>
+              Close
+            </button>
+            <p style={{textAlign:"center",fontSize:10.5,color:"rgba(255,255,255,.18)",marginTop:12,fontStyle:"italic",lineHeight:1.5}}>
+              😄 Just for fun — don&apos;t take it seriously!
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
