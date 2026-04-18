@@ -228,28 +228,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     if (user?.username) track(user.username, "view");
   },[]);
 
-  /* ── Dynamic theme based on role ── */
-  const THEMES = {
-    coder:       { accent:"#00ff9d", glow:"rgba(0,255,157,.18)", hero:"linear-gradient(135deg,#000d08 0%,#001a10 100%)", badge:"#00ff9d" },
-    software_dev:{ accent:"#00ff9d", glow:"rgba(0,255,157,.18)", hero:"linear-gradient(135deg,#000d08 0%,#001a10 100%)", badge:"#00ff9d" },
-    web_dev:     { accent:"#38bdf8", glow:"rgba(56,189,248,.18)", hero:"linear-gradient(135deg,#00080f 0%,#001220 100%)", badge:"#38bdf8" },
-    app_dev:     { accent:"#818cf8", glow:"rgba(129,140,248,.18)", hero:"linear-gradient(135deg,#06040f 0%,#0d0820 100%)", badge:"#818cf8" },
-    data_sci:    { accent:"#fb923c", glow:"rgba(251,146,60,.18)", hero:"linear-gradient(135deg,#0f0700 0%,#1a0d00 100%)", badge:"#fb923c" },
-    ai_eng:      { accent:"#a78bfa", glow:"rgba(167,139,250,.18)", hero:"linear-gradient(135deg,#07050f 0%,#110d20 100%)", badge:"#a78bfa" },
-    designer:    { accent:"#f472b6", glow:"rgba(244,114,182,.22)", hero:"linear-gradient(135deg,#0f0009 0%,#1a0012 100%)", badge:"#f472b6" },
-    ui_ux:       { accent:"#f472b6", glow:"rgba(244,114,182,.22)", hero:"linear-gradient(135deg,#0f0009 0%,#1a0012 100%)", badge:"#f472b6" },
-    artist:      { accent:"#f87171", glow:"rgba(248,113,113,.22)", hero:"linear-gradient(135deg,#0f0505 0%,#200808 100%)", badge:"#f87171" },
-    creator:     { accent:"#fbbf24", glow:"rgba(251,191,36,.18)", hero:"linear-gradient(135deg,#0f0c00 0%,#1a1400 100%)", badge:"#fbbf24" },
-    musician:    { accent:"#c084fc", glow:"rgba(192,132,252,.18)", hero:"linear-gradient(135deg,#08040f 0%,#130820 100%)", badge:"#c084fc" },
-    gamer:       { accent:"#4ade80", glow:"rgba(74,222,128,.18)", hero:"linear-gradient(135deg,#010f04 0%,#021a08 100%)", badge:"#4ade80" },
-    trader:      { accent:"#34d399", glow:"rgba(52,211,153,.18)", hero:"linear-gradient(135deg,#00100a 0%,#001a10 100%)", badge:"#34d399" },
-    crypto:      { accent:"#f59e0b", glow:"rgba(245,158,11,.18)", hero:"linear-gradient(135deg,#100900 0%,#1a1000 100%)", badge:"#f59e0b" },
-    entrepreneur:{ accent:"#f97316", glow:"rgba(249,115,22,.18)", hero:"linear-gradient(135deg,#100500 0%,#1a0a00 100%)", badge:"#f97316" },
-    athlete:     { accent:"#22d3ee", glow:"rgba(34,211,238,.18)", hero:"linear-gradient(135deg,#000f12 0%,#001820 100%)", badge:"#22d3ee" },
-    doctor:      { accent:"#6ee7b7", glow:"rgba(110,231,183,.15)", hero:"linear-gradient(135deg,#010f09 0%,#021a10 100%)", badge:"#6ee7b7" },
-    teacher:     { accent:"#fde68a", glow:"rgba(253,230,138,.15)", hero:"linear-gradient(135deg,#0f0d00 0%,#1a1600 100%)", badge:"#fde68a" },
-  };
-  const theme = (user && THEMES[user?.interests?.role]) || { accent:"#fff", glow:"rgba(255,255,255,.10)", hero:"#0d0d0d", badge:"rgba(255,220,90,.88)" };
+  /* ── Fixed theme — same for all roles ── */
+  const theme = { accent:"#fff", glow:"rgba(255,255,255,.10)", hero:"#0d0d0d", badge:"rgba(255,255,255,.88)" };
 
 
 
