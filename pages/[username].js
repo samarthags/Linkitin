@@ -1,31 +1,36 @@
-// pages/[username].js
 import Head from "next/head";
 import { useState, useEffect } from "react";
 import clientPromise from "../lib/mongodb";
-import crypto from "crypto";
 
 // ─── Cloudinary upload helper ─────────────────────────────────────────────────
 async function uploadToCloudinary(base64DataUri, folder = "linkitin") {
+  // Require crypto locally to prevent Next.js from bundling it to the client and crashing
+  const crypto = require("crypto");
+  
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
     throw new Error("Cloudinary env vars not configured");
   }
+  
   const timestamp    = Math.floor(Date.now() / 1000);
   const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
   const signature    = crypto
     .createHmac("sha256", CLOUDINARY_API_SECRET)
     .update(paramsToSign)
     .digest("hex");
+    
   const formData = new FormData();
   formData.append("file",      base64DataUri);
   formData.append("timestamp", String(timestamp));
   formData.append("api_key",   CLOUDINARY_API_KEY);
   formData.append("signature", signature);
   formData.append("folder",    folder);
+  
   const res  = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
     { method: "POST", body: formData }
   );
+  
   const json = await res.json();
   if (!res.ok || json.error) {
     throw new Error(json.error?.message || "Cloudinary upload failed");
@@ -183,6 +188,7 @@ function ShareSheet({ url, name, onClose }) {
     {l:"Email",     ic:"fas fa-envelope",       bg:"#1f0d0d",fg:"#EA4335",fn:()=>window.open(`mailto:?subject=${enc("Visit "+name+"'s Profile!")}&body=${enc("Visit "+name+"'s Profile: "+url)}`)},
     {l:"SMS",       ic:"fas fa-comment-sms",    bg:"#0d1f15",fg:"#1DB954",fn:()=>window.open(`sms:?body=${enc("Visit "+name+"'s Profile: "+url)}`)},
   ];
+  
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(6px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:520,paddingBottom:44,animation:"ssUp .28s cubic-bezier(.34,1.4,.64,1) both"}}>
@@ -214,7 +220,6 @@ function ShareSheet({ url, name, onClose }) {
   );
 }
 
-
 // ─── Profile page ─────────────────────────────────────────────────────────────
 export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [shareOpen,    setShareOpen]    = useState(false);
@@ -222,16 +227,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [loading,      setLoading]      = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
 
-
-
   useEffect(()=>{
     if (user?.username) track(user.username, "view");
   },[]);
 
   /* ── Fixed theme — same for all roles ── */
   const theme = { accent:"#fff", glow:"rgba(255,255,255,.10)", hero:"#0d0d0d", badge:"rgba(255,255,255,.88)" };
-
-
 
   useEffect(()=>{
     if (!user) { setLoading(false); return; }
@@ -478,9 +479,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .lbtn:hover{border-color:var(--theme-accent,#2e2e2e)!important;box-shadow:0 4px 16px var(--theme-glow,rgba(0,0,0,.45))!important;}
           .foot-cta:hover{color:var(--theme-accent,#555)!important;}
 
-
-
-
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
           @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
           @keyframes breathe{0%,100%{opacity:.9;}50%{opacity:.4;}}
@@ -641,15 +639,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       {/* ── Theme background overlay ── */}
       <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.6,pointerEvents:"none"}}/>
 
-{/* ── Share FAB ── */}
+      {/* ── Share FAB ── */}
       <button className="sfab" onClick={()=>{
         setShareOpen(true);
         track(user.username,"share");
       }} aria-label="Share">
         <i className="fas fa-share-nodes"/>
       </button>
-
-
 
       {/* ── HERO ── */}
       {user.avatar ? (
@@ -780,8 +776,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       </div>
 
       {shareOpen&&<ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
-
-
     </>
   );
 }
