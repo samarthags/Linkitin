@@ -1,6 +1,6 @@
 <h1 align="center">LINKITIN</h1>
 <p align="center"><b>A modern full-stack bio-link platform to manage your digital identity</b></p>
-<p align="center"><i>Designed and Developed by <b>Samartha GS</b></i></p>
+<p align="center"><i>Designed and Developed by <b>Samartha Gs</b></i></p>
 
 ---
 
@@ -71,4 +71,4 @@ External APIs: Spotify and Groq
 
 ## Setup (All-in-One)
 ```bash
-git clone https://github.com/your-username/linkitin.git && cd linkitin && npm install && npm run dev
+git clone https://github.com/samarthags/linkitin.git && cd linkitin && npm install && npm run dev
