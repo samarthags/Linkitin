@@ -1,4 +1,4 @@
-// pages/index.js — linkitin Landing Page
+// pages/index.js — linkitin Landing Page (Production)
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
@@ -24,24 +24,25 @@ export default function Landing() {
 
   const features = [
     { icon: "fas fa-link",                title: "Link in Bio",        desc: "One clean URL with your photo, socials, links and your story — all in one place." },
-    { icon: "fas fa-id-badge",            title: "Professional Badge", desc: "Coder, Designer, Trader, Editor ,Singer, Artist — own your role with a clean identity badge." },
-    { icon: "fab fa-spotify",             title: "Spotify Widget",     desc: "Pin  you're favorite song right on your profile." },
+    { icon: "fas fa-id-badge",            title: "Professional Badge", desc: "Coder, Designer, Trader, Editor, Singer, Artist — own your role with a clean identity badge." },
+    { icon: "fab fa-spotify",             title: "Spotify Widget",     desc: "Pin your favourite song right on your profile." },
     { icon: "fas fa-wand-magic-sparkles", title: "AI Bio Writer",      desc: "Write one sentence about yourself. The AI turns it into a full bio, in your voice." },
     { icon: "fas fa-share-nodes",         title: "Share Anywhere",     desc: "WhatsApp, Instagram, Telegram — one link works everywhere." },
     { icon: "fas fa-chart-line",          title: "Simple Analytics",   desc: "See how many people visit your profile and which links they tap." },
   ];
 
   const steps = [
-    { n: "01", t: "Pick your username", d: "Your profile will live at linkitin.site/yourname" },
-    { n: "02", t: "Add your stuff",     d: "Photo, badge, links, Spotify song — and let AI write your bio." },
-    { n: "03", t: "Share your link",    d: "Publish and share. No signup, no email, nothing extra." },
+    { n: "01", t: "Sign in with Google",  d: "One tap — no passwords, no forms. Your account is ready instantly." },
+    { n: "02", t: "Build your profile",   d: "Add your photo, badge, links, Spotify song and let AI write your bio." },
+    { n: "03", t: "Share your link",      d: "Go live at linkitin.site/yourname and drop it in every bio." },
   ];
 
   const faqs = [
-    { q: "Is linkitin free?",             a: "Yes, completely free. No hidden plans, no credit card, no catch." },
-    { q: "Do I need to make an account?", a: "No. No account, no email. Your profile is saved on your device." },
-    { q: "Does it work on mobile?",       a: "Yes — built for mobile first. Build and share from your phone." },
-    { q: "What is a link in bio?",        a: "It's one URL you put in your Instagram or X or any social media bio that shows all your important links in one page." },
+    { q: "Is linkitin free?",              a: "Yes, completely free. No hidden plans, no credit card, no catch." },
+    { q: "Why do I need to sign in?",      a: "Google sign-in saves your profile securely so you can edit it anytime, from any device." },
+    { q: "Does it work on mobile?",        a: "Yes — built for mobile first. Build and share from your phone." },
+    { q: "What is a link in bio?",         a: "It's one URL you put in your Instagram or X bio that shows all your important links in one page." },
+    { q: "Can I change my username later?", a: "Yes. You can update your username and profile details anytime from your dashboard." },
   ];
 
   const jsonLd = [
@@ -50,11 +51,10 @@ export default function Landing() {
       "@type": "WebApplication",
       "name": "linkitin",
       "url": SITE_URL,
-      "description": "Create your personal link-in-bio profile page. Add your photo, professional badge, socials, Spotify song and an AI-written bio — all at one URL. Free forever. No account needed.",
+      "description": "Create your personal link-in-bio profile page. Add your photo, professional badge, socials, Spotify song and an AI-written bio — all at one URL.",
       "applicationCategory": "SocialNetworkingApplication",
       "operatingSystem": "Web",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-      "author": { "@type": "Person", "name": "Samartha GS" },
       "publisher": { "@type": "Organization", "name": "linkitin", "url": SITE_URL, "logo": { "@type": "ImageObject", "url": `${SITE_URL}/icon.png` } },
     },
     {
@@ -80,11 +80,8 @@ export default function Landing() {
     <>
       <Head>
         <title>Linkitin — Free Link in Bio | Create Your Profile Page</title>
-        <meta name="description" content="Create your free link in bio profile page. Add your photo, badge, social links, Spotify song and AI-written bio — all at one URL. No account needed. Free forever." />
+        <meta name="description" content="Create your free link in bio profile page. Add your photo, badge, social links, Spotify song and AI-written bio — all at one URL. Sign in with Google to get started." />
         <meta name="keywords" content="link in bio, free link in bio, linktree alternative, bio link page, personal profile page, linkitin, instagram bio link, link in bio tool, AI bio generator, spotify profile link" />
-        <meta name="author"        content="Samartha GS" />
-        <meta name="creator"       content="Samartha GS" />
-        <meta name="publisher"     content="linkitin" />
         <meta name="robots"        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="googlebot"     content="index, follow" />
         <meta name="viewport"      content="width=device-width, initial-scale=1" />
@@ -103,7 +100,7 @@ export default function Landing() {
         <meta property="og:type"         content="website" />
         <meta property="og:site_name"    content="linkitin" />
         <meta property="og:title"        content="linkitin — Free Link in Bio | Create Your Profile Page" />
-        <meta property="og:description"  content="Create your free link in bio profile. Add socials, Spotify, badge and AI bio — all at one URL. No account needed." />
+        <meta property="og:description"  content="Create your free link in bio profile. Add socials, Spotify, badge and AI bio — all at one URL." />
         <meta property="og:url"          content={SITE_URL} />
         <meta property="og:image"        content={OG_IMAGE} />
         <meta property="og:image:width"  content="1200" />
@@ -114,7 +111,7 @@ export default function Landing() {
         <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:site"        content="@linkitin" />
         <meta name="twitter:title"       content="linkitin — Your Free Link in Bio" />
-        <meta name="twitter:description" content="One URL for your socials, links, Spotify and AI bio. Free, no account needed." />
+        <meta name="twitter:description" content="One URL for your socials, links, Spotify and AI bio. Sign in with Google to get started." />
         <meta name="twitter:image"       content={OG_IMAGE} />
 
         {jsonLd.map((schema, i) => (
@@ -157,13 +154,40 @@ export default function Landing() {
           .vis .a3 { animation: fadeUp .65s .21s cubic-bezier(.16,1,.3,1) both; }
           .vis .a4 { animation: fadeUp .65s .29s cubic-bezier(.16,1,.3,1) both; }
 
-          /* ── HERO — no min-height, pure content height ── */
+          /* ── NAV ── */
+          nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 24px;
+            border-bottom: 1px solid #161616;
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(13,13,13,.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+          }
+          .nav-logo {
+            font-size: 15px; font-weight: 800;
+            color: #fff; letter-spacing: -.03em;
+          }
+          .nav-cta {
+            display: flex; align-items: center; gap: 7px;
+            padding: 8px 16px;
+            background: #fff; color: #0d0d0d;
+            font-family: 'Sora', sans-serif;
+            font-size: 12px; font-weight: 700;
+            border-radius: 100px;
+            border: none;
+            transition: opacity .15s, transform .15s;
+          }
+          .nav-cta:hover { opacity: .88; transform: scale(1.02); }
+          .nav-cta img { width: 14px; height: 14px; }
+
+          /* ── HERO ── */
           .hero {
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            padding: 64px 20px 56px;
+            padding: 72px 20px 64px;
           }
 
           .eyebrow {
@@ -178,7 +202,8 @@ export default function Landing() {
           }
           .dot {
             width: 5px; height: 5px; border-radius: 50%;
-            background: #fff;
+            background: #1db954;
+            box-shadow: 0 0 6px #1db954;
             animation: blink 2.4s ease-in-out infinite;
           }
 
@@ -215,14 +240,14 @@ export default function Landing() {
             color: rgba(255,255,255,.4);
             font-weight: 300;
             max-width: 400px;
-            margin: 0 auto 16px;
+            margin: 0 auto 20px;
             line-height: 1.75;
           }
 
           .pills {
             display: flex; flex-wrap: wrap;
             align-items: center; justify-content: center;
-            gap: 6px; margin-bottom: 28px;
+            gap: 6px; margin-bottom: 32px;
           }
           .pill {
             padding: 4px 11px;
@@ -234,6 +259,7 @@ export default function Landing() {
           }
           .pill i { font-size: 8px; color: rgba(255,255,255,.35); }
 
+          /* ── GOOGLE AUTH BUTTON ── */
           .cta-col {
             display: flex; flex-direction: column;
             align-items: stretch;
@@ -241,28 +267,60 @@ export default function Landing() {
             width: 100%;
             max-width: 360px;
           }
-          .btn-main {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
+
+          .btn-google {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
             padding: 15px 20px;
-            background: #fff; color: #0d0d0d;
+            background: #fff; color: #1a1a1a;
             font-family: 'Sora', sans-serif;
             font-size: 14px; font-weight: 700;
             border-radius: 100px;
-            transition: opacity .15s, transform .15s;
+            border: none;
+            transition: opacity .15s, transform .15s, box-shadow .15s;
+            box-shadow: 0 0 0 0 rgba(255,255,255,0);
           }
-          .btn-main:hover { opacity: .9; transform: scale(1.02); }
-          .btn-ghost {
-            display: flex; align-items: center; justify-content: center; gap: 7px;
-            padding: 14px 20px;
-            background: transparent;
-            color: rgba(255,255,255,.36);
-            font-family: 'Sora', sans-serif;
-            font-size: 13px; font-weight: 600;
-            border-radius: 100px;
-            border: 1px solid #232323;
-            transition: border-color .15s, color .15s;
+          .btn-google:hover {
+            opacity: .93;
+            transform: scale(1.02);
+            box-shadow: 0 4px 24px rgba(255,255,255,.08);
           }
-          .btn-ghost:hover { border-color: rgba(255,255,255,.22); color: #fff; }
+          .btn-google svg {
+            width: 18px; height: 18px; flex-shrink: 0;
+          }
+          .btn-terms {
+            font-size: 10.5px;
+            color: rgba(255,255,255,.18);
+            font-weight: 400;
+            text-align: center;
+            line-height: 1.6;
+          }
+          .btn-terms a {
+            color: rgba(255,255,255,.32);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+          }
+
+          /* ── SOCIAL PROOF ── */
+          .social-proof {
+            display: flex; align-items: center; gap: 8px;
+            justify-content: center;
+            margin-top: 20px;
+          }
+          .avatars {
+            display: flex;
+          }
+          .avatar {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: #222; border: 1.5px solid #0d0d0d;
+            margin-left: -6px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; color: rgba(255,255,255,.4);
+          }
+          .avatar:first-child { margin-left: 0; }
+          .proof-text {
+            font-size: 11px; color: rgba(255,255,255,.22);
+            font-weight: 500;
+          }
 
           /* ── DIVIDER ── */
           .divider {
@@ -386,7 +444,7 @@ export default function Landing() {
           }
           .cta-url {
             display: inline-block;
-            padding: 5px 13px; margin-bottom: 20px;
+            padding: 5px 13px; margin-bottom: 22px;
             background: rgba(255,255,255,.05); border: 1px solid #252525;
             border-radius: 100px;
             font-size: 12px; color: rgba(255,255,255,.38); font-weight: 600;
@@ -399,8 +457,6 @@ export default function Landing() {
             border-top: 1px solid #161616;
           }
           .ft-logo { font-size: 13px; font-weight: 800; color: rgba(255,255,255,.22); letter-spacing: -.02em; margin-bottom: 5px; }
-          .ft-dev  { font-size: 11px; color: rgba(255,255,255,.15); }
-          .ft-dev strong { color: rgba(255,255,255,.24); font-weight: 700; }
           .ft-links {
             display: flex; align-items: center; justify-content: center;
             flex-wrap: wrap; gap: 14px; margin-top: 9px;
@@ -408,8 +464,27 @@ export default function Landing() {
           .ft-links a { font-size: 11px; color: rgba(255,255,255,.15); font-weight: 500; transition: color .15s; }
           .ft-links a:hover { color: rgba(255,255,255,.38); }
           .ft-sep { color: #1e1e1e; }
+
+          @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+          }
         `}</style>
       </Head>
+
+      {/* NAV */}
+      <nav>
+        <div className="nav-logo">linkitin</div>
+        <a href="/create" className="nav-cta" aria-label="Sign in with Google to create your profile">
+          {/* Google G icon */}
+          <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+          </svg>
+          Sign in
+        </a>
+      </nav>
 
       <main>
         {/* HERO */}
@@ -417,7 +492,7 @@ export default function Landing() {
 
           <div className="eyebrow a1">
             <span className="dot" />
-            Free · No account needed
+            Free · Secure Google sign-in
           </div>
 
           <h1 className="headline a2">
@@ -438,23 +513,37 @@ export default function Landing() {
           </p>
 
           <div className="pills a3">
-            {["Free forever", "No account", "No email", "Mobile friendly", "AI bio"].map((t, i) => (
+            {["Free forever", "Google sign-in", "Mobile friendly", "AI bio", "Spotify"].map((t, i) => (
               <span key={i} className="pill">
-                <i className="fas fa-check" />
+                <i className="fas fa-check" aria-hidden="true" />
                 {t}
               </span>
             ))}
           </div>
 
           <div className="cta-col a4">
-            <a href="/create" className="btn-main">
-              <i className="fas fa-rocket" style={{ fontSize: 12 }} />
-              Create Your Profile — Free
+            <a href="/create" className="btn-google" aria-label="Create your profile — sign in with Google">
+              <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google — It's Free
             </a>
-            <a href="#features" className="btn-ghost">
-              See features
-              <i className="fas fa-arrow-down" style={{ fontSize: 10 }} />
-            </a>
+            <p className="btn-terms">
+              By continuing you agree to our{" "}
+              <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>
+            </p>
+          </div>
+
+          <div className="social-proof a4">
+            <div className="avatars" aria-hidden="true">
+              {["U","A","S","B"].map((l, i) => (
+                <div className="avatar" key={i}>{l}</div>
+              ))}
+            </div>
+            <p className="proof-text">Thousands of profiles already live</p>
           </div>
 
         </div>
@@ -469,7 +558,7 @@ export default function Landing() {
           <div className="feat-grid" role="list">
             {features.map((f, i) => (
               <article key={i} className="feat-card" role="listitem">
-                <div className="feat-icon"><i className={f.icon} /></div>
+                <div className="feat-icon"><i className={f.icon} aria-hidden="true" /></div>
                 <h3 className="feat-title">{f.title}</h3>
                 <p className="feat-desc">{f.desc}</p>
               </article>
@@ -483,11 +572,11 @@ export default function Landing() {
         <section className="wrap" aria-labelledby="steps-h">
           <div className="sec-eye">How it works</div>
           <h2 className="sec-h" id="steps-h">Up and running in 3 steps</h2>
-          <p className="sec-sub">No form to fill. No email to confirm. Just build and share.</p>
+          <p className="sec-sub">Sign in once. Build your page. Share everywhere.</p>
           <div className="steps-wrap" role="list">
             {steps.map((s, i) => (
               <div key={i} className="step" role="listitem">
-                <div className="step-n">{s.n}</div>
+                <div className="step-n" aria-hidden="true">{s.n}</div>
                 <div>
                   <h3 className="step-t">{s.t}</h3>
                   <p className="step-d">{s.d}</p>
@@ -510,7 +599,7 @@ export default function Landing() {
                 itemScope itemType="https://schema.org/Question">
                 <div className="faq-q" itemProp="name">
                   {f.q}
-                  <i className="fas fa-plus" />
+                  <i className="fas fa-plus" aria-hidden="true" />
                 </div>
                 <div className="faq-a"
                   itemScope itemType="https://schema.org/Answer" itemProp="acceptedAnswer">
@@ -528,13 +617,19 @@ export default function Landing() {
           <div className="cta-box">
             <h2 className="cta-t" id="cta-h">Your profile,<br />your way</h2>
             <p className="cta-d">
-              No account. No email. Open on any device, build your page, and share your link — done.
+              Sign in with Google once and your profile is saved forever — edit it anytime, from any device.
             </p>
             <div className="cta-url">linkitin.site/<strong>you</strong></div>
             <br />
-            <a href="/create" className="btn-main" style={{ display: "inline-flex", width: "auto" }}>
-              <i className="fas fa-rocket" style={{ fontSize: 12 }} />
-              Create for Free
+            <a href="/create" className="btn-google" style={{ display: "inline-flex", width: "auto" }}
+              aria-label="Create your profile — sign in with Google">
+              <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{width:16,height:16}}>
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google — Free
             </a>
           </div>
         </section>
@@ -543,22 +638,12 @@ export default function Landing() {
       {/* FOOTER */}
       <footer>
         <div className="ft-logo">linkitin</div>
-        <div className="ft-dev">
-  Developed by{" "}
-  <strong>
-    <a 
-      href="https://linkitin.site/samarthags" 
-      target="_blank" 
-      rel="noopener noreferrer"
-    >
-      Samartha Gs
-    </a>
-  </strong>
-</div>
         <div className="ft-links">
           <a href="/">© {new Date().getFullYear()} linkitin</a>
           <span className="ft-sep">·</span>
-          <a href="https://linkitin.site/samarthags">Demo profile</a>
+          <a href="/terms">Terms</a>
+          <span className="ft-sep">·</span>
+          <a href="/privacy">Privacy</a>
           <span className="ft-sep">·</span>
           <a href="/create">Create Profile</a>
         </div>
