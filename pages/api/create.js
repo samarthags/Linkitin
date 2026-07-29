@@ -1,4 +1,4 @@
-// pages/api/create.js
+// pages/api/create.js — NO-AUTH TEST VERSION (same as your original)
 import clientPromise from "../../lib/mongodb";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -11,9 +11,7 @@ cloudinary.config({
 async function maybeUpload(value) {
   if (!value || !value.startsWith("data:image/")) return value || "";
   try {
-    const result = await cloudinary.uploader.upload(value, {
-      folder: "linkitin",
-    });
+    const result = await cloudinary.uploader.upload(value, { folder: "linkitin" });
     return result.secure_url;
   } catch (err) {
     console.error("[Cloudinary upload error]", err.message);
@@ -38,7 +36,6 @@ export default async function handler(req, res) {
   if (!username || !name) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-
   if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
     return res.status(400).json({ error: "Username can only contain letters, numbers, _ and -" });
   }
@@ -47,19 +44,14 @@ export default async function handler(req, res) {
 
   try {
     const safeAvatar = await maybeUpload(avatar);
-
     const safeLinks = await Promise.all(
-      (links || []).map(async (lnk) => ({
-        ...lnk,
-        icon: await maybeUpload(lnk.icon),
-      }))
+      (links || []).map(async (lnk) => ({ ...lnk, icon: await maybeUpload(lnk.icon) }))
     );
 
     const client = await clientPromise;
     const db     = client.db(process.env.DB_NAME);
 
     const existing = await db.collection("users").findOne({ username: uname });
-
     if (existing && !_isEditing) {
       return res.status(400).json({ error: "Username already taken. Please choose a different one." });
     }
@@ -84,19 +76,16 @@ export default async function handler(req, res) {
           favSongTrackId: favSongTrackId || "",
           updatedAt:      new Date(),
         },
-        $setOnInsert: {
-          createdAt: new Date(),
-        },
+        $setOnInsert: { createdAt: new Date() },
       },
       { upsert: true, returnDocument: "after" }
     );
 
-    const host     = req.headers.host || "mywebsammu.vercel.app";
+    const host     = req.headers.host || "linkitin.site";
     const protocol = host.startsWith("localhost") ? "http" : "https";
     const base     = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`;
 
     return res.status(200).json({ url: `${base}/${uname}` });
-
   } catch (err) {
     console.error("[/api/create]", err);
     if (err.message?.toLowerCase().includes("cloudinary")) {
