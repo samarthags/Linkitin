@@ -1,36 +1,39 @@
+// pages/[username].js — save as [username].js (GitHub can't show brackets in
+// chat, but the actual filename on disk must be exactly [username].js)
 import Head from "next/head";
 import { useState, useEffect } from "react";
 import clientPromise from "../lib/mongodb";
+import DuoCard from "../components/DuoCard";
 
 // ─── Cloudinary upload helper ─────────────────────────────────────────────────
 async function uploadToCloudinary(base64DataUri, folder = "linkitin") {
   // Require crypto locally to prevent Next.js from bundling it to the client and crashing
   const crypto = require("crypto");
-  
+
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
     throw new Error("Cloudinary env vars not configured");
   }
-  
+
   const timestamp    = Math.floor(Date.now() / 1000);
   const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
   const signature    = crypto
     .createHmac("sha256", CLOUDINARY_API_SECRET)
     .update(paramsToSign)
     .digest("hex");
-    
+
   const formData = new FormData();
   formData.append("file",      base64DataUri);
   formData.append("timestamp", String(timestamp));
   formData.append("api_key",   CLOUDINARY_API_KEY);
   formData.append("signature", signature);
   formData.append("folder",    folder);
-  
+
   const res  = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
     { method: "POST", body: formData }
   );
-  
+
   const json = await res.json();
   if (!res.ok || json.error) {
     throw new Error(json.error?.message || "Cloudinary upload failed");
@@ -188,7 +191,7 @@ function ShareSheet({ url, name, onClose }) {
     {l:"Email",     ic:"fas fa-envelope",       bg:"#1f0d0d",fg:"#EA4335",fn:()=>window.open(`mailto:?subject=${enc("Visit "+name+"'s Profile!")}&body=${enc("Visit "+name+"'s Profile: "+url)}`)},
     {l:"SMS",       ic:"fas fa-comment-sms",    bg:"#0d1f15",fg:"#1DB954",fn:()=>window.open(`sms:?body=${enc("Visit "+name+"'s Profile: "+url)}`)},
   ];
-  
+
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(6px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:520,paddingBottom:44,animation:"ssUp .28s cubic-bezier(.34,1.4,.64,1) both"}}>
@@ -226,10 +229,20 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [spOpen,       setSpOpen]       = useState(false);
   const [loading,      setLoading]      = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
+  const [duo,          setDuo]          = useState(null);
 
   useEffect(()=>{
     if (user?.username) track(user.username, "view");
   },[]);
+
+  // ── Dynamic Duo: fetch public duo status for this profile ──
+  useEffect(() => {
+    if (!user?.username) return;
+    fetch(`/api/duo?username=${user.username}`)
+      .then(r => r.json())
+      .then(d => setDuo(d.duo))
+      .catch(() => {});
+  }, [user?.username]);
 
   /* ── Fixed theme — same for all roles ── */
   const theme = { accent:"#fff", glow:"rgba(255,255,255,.10)", hero:"#0d0d0d", badge:"rgba(255,255,255,.88)" };
@@ -697,6 +710,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         {bio && <p className="bio-text s2" style={{color:`rgba(255,255,255,.55)`}}>{bio}</p>}
         {/* theme accent underline */}
         <div style={{width:40,height:2,borderRadius:2,background:theme.accent,margin:"-10px auto 20px",opacity:.6}}/>
+
+        {/* ── Dynamic Duo card ── */}
+        {duo && <div className="s3"><DuoCard duo={duo} /></div>}
 
         {socials.length > 0 && (
           <div className="soc-row s3">
