@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Head from "next/head";
+import DuoManager from "../components/DuoManager";
 
 /* ─── SSR-safe style injection ─── */
 let _stylesLoaded = false;
@@ -315,10 +316,6 @@ const ALL_SKILLS = [
   "Graphic Design","Brand Design","Logo Design","Interior Design","Fashion Design",
 ];
 
-
-
-
-
 const EMPTY = {
   username:"",name:"",dob:"",avatar:"",
   socialProfiles:{},links:[],
@@ -428,7 +425,6 @@ function SearchableTags({label, items, selected, onToggle}) {
   );
 }
 
-
 /* ─── Spotify Search Component ─── */
 function SpotifySearch({ value, trackId, onSelect, onClear }) {
   const [query,    setQuery]   = useState("");
@@ -438,7 +434,6 @@ function SpotifySearch({ value, trackId, onSelect, onClear }) {
   const [timer,    setTimer]   = useState(null);
   const wrapRef = useRef(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) {
@@ -467,7 +462,6 @@ function SpotifySearch({ value, trackId, onSelect, onClear }) {
     setTimer(t);
   };
 
-  // If a track is already selected, show it
   if (trackId && value) {
     return (
       <div style={{background:"#f0edff",border:"1.5px solid #c4b5fd",borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
@@ -507,7 +501,6 @@ function SpotifySearch({ value, trackId, onSelect, onClear }) {
         />
       </div>
 
-      {/* Dropdown results */}
       {focused && results.length > 0 && (
         <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e9eaf0",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,maxHeight:280,overflowY:"auto"}}>
           {results.map(track => (
@@ -673,7 +666,7 @@ export default function ProfileCreator() {
     setAiLoad(true);
     const badge=ROLES.find(r=>r.v===form.interests.role)?.l||"";
     const nm   =form.name||"someone";
-    const about=form.bio||"";   // what user typed in step 1
+    const about=form.bio||"";
     try{
       const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
         method:"POST",
@@ -703,10 +696,7 @@ export default function ProfileCreator() {
 
   const [pubError,setPubError]=useState("");
 
-  /* ── Publish ──
-     _isEditing:true  = updating own profile  → API skips username-taken check, does update
-     _isEditing:false = new profile creation  → API blocks if username already exists
-  */
+  /* ── Publish ── */
   const handlePublish=async()=>{
     setSubmitting(true);
     setPubError("");
@@ -714,7 +704,6 @@ export default function ProfileCreator() {
     const origin  = typeof window!=="undefined" ? window.location.origin : "https://linkitin.site";
     const pUrl    = `${origin}/${form.username}`;
     const pObj    = {...form, aboutme, savedAt:new Date().toISOString(), publishedUrl:pUrl};
-    // If a saved profile exists with the SAME username → this is an edit, not a new creation
     const isEditing = !!(saved && saved.username === form.username);
     try{
       const res = await fetch("/api/create",{
@@ -747,7 +736,6 @@ export default function ProfileCreator() {
 
   const copyLink=useCallback(()=>{
     const url=getUrl();
-    // Try clipboard API first, fallback to execCommand
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(url).catch(()=>{
         try{const el=document.createElement("textarea");el.value=url;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);}catch(_){}
@@ -758,7 +746,6 @@ export default function ProfileCreator() {
     setCopied(true);setTimeout(()=>setCopied(false),2200);
   },[pubUrl,saved]);
 
-  // Always open our custom share sheet — never the browser/OS native share
   const openShare=()=>{ setShowShare(true); if(saved?.username) fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:saved.username,event:'share'})}).catch(()=>{}); };
 
   /* ── Delete profile ── */
@@ -771,7 +758,6 @@ export default function ProfileCreator() {
         body:JSON.stringify({username:saved?.username}),
       });
     }catch(_){}
-    // Always clear local regardless of server response
     try{localStorage.removeItem("mws_v6");}catch(_){}
     setSaved(null);
     setForm(EMPTY);
@@ -867,6 +853,10 @@ export default function ProfileCreator() {
               </div>
             )}
           </div>
+
+          {/* ── Dynamic Duo ── */}
+          <DuoManager username={saved.username} />
+
           {/* Analytics */}
           <div className="card" style={{marginBottom:12}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
@@ -983,7 +973,6 @@ export default function ProfileCreator() {
                     onChange={e=>{
                       const val=e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g,"");
                       setField("username",val);
-                      // If editing own profile and username unchanged — mark as editing (always fine)
                       if(saved?.username && val===saved.username){
                         setUnameStatus("editing");
                         if(unameTimer) clearTimeout(unameTimer);
@@ -992,7 +981,6 @@ export default function ProfileCreator() {
                       if(!val||val.length<3){setUnameStatus("idle");return;}
                       setUnameStatus("checking");
                       if(unameTimer) clearTimeout(unameTimer);
-                      // Debounce 600ms
                       const t=setTimeout(async()=>{
                         try{
                           const r=await fetch(`/api/check-username?username=${val}`);
@@ -1003,7 +991,6 @@ export default function ProfileCreator() {
                       setUnameTimer(t);
                     }}
                   />
-                  {/* Status icon inside input */}
                   <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:14,pointerEvents:"none"}}>
                     {unameStatus==="checking"  && <i className="fas fa-spinner spin" style={{color:"#adb5c0"}}/>}
                     {unameStatus==="available" && <i className="fas fa-circle-check" style={{color:"#10b981"}}/>}
@@ -1011,7 +998,6 @@ export default function ProfileCreator() {
                     {unameStatus==="editing"   && <i className="fas fa-pen" style={{color:AC}}/>}
                   </span>
                 </div>
-                {/* Status message below input */}
                 {unameStatus==="available" && (
                   <div style={{fontSize:12,color:"#10b981",marginTop:5,display:"flex",alignItems:"center",gap:5}}>
                     <i className="fas fa-circle-check"/>
@@ -1112,7 +1098,6 @@ export default function ProfileCreator() {
             <div className="card" style={{marginBottom:12}}>
               <SH icon="fas fa-face-smile" title="Choose Your Favourite Badge" sub=""/>
 
-              {/* Professional Badge */}
               <div style={{marginBottom:16}}>
                 <Lbl>Your Badge <span style={{color:AC,fontWeight:500,textTransform:"none",fontSize:11,marginLeft:4}}>— shows on your profile</span></Lbl>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -1136,11 +1121,8 @@ export default function ProfileCreator() {
                 </div>
               </div>
 
-
-
               <div className="divider" style={{margin:"20px 0"}}/>
 
-              {/* AI Bio — right here */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
                 <Lbl>Generate Your Bio</Lbl>
                 <div className="aibadge"><i className="fas fa-bolt"/> Expo.1 · SGS Model</div>
@@ -1205,11 +1187,8 @@ export default function ProfileCreator() {
                   <input className="inp" style={{flex:"0 0 138px",minWidth:0}} placeholder="Label" value={newLink.title} onChange={e=>setNewLink(p=>({...p,title:e.target.value}))}/>
                   <input className="inp" style={{flex:1,minWidth:130}} placeholder="https://..." value={newLink.url} onChange={e=>setNewLink(p=>({...p,url:e.target.value}))}/>
                 </div>
-                {/* Icon picker — FA icons, emoji, or custom image */}
                 <div style={{marginBottom:10}}>
-                  {/* Current icon preview + 3 mode buttons */}
                   <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
-                    {/* Preview */}
                     <div style={{width:40,height:40,borderRadius:10,background:"#f0edff",border:"1.5px solid #e0dcff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
                       {newLink.icon?.startsWith("data:")
                         ? <img src={newLink.icon} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
@@ -1217,12 +1196,10 @@ export default function ProfileCreator() {
                           ? <i className={newLink.icon} style={{fontSize:17,color:AC}}/>
                           : <span style={{fontSize:20}}>{newLink.icon||"🔗"}</span>}
                     </div>
-                    {/* FA icon picker toggle */}
                     <button type="button" className="btn btn-gh" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setShowIconP(v=>!v)}>
                       <i className="fas fa-icons"/> Icons <i className={`fas fa-chevron-${showIconP?"up":"down"}`} style={{fontSize:10}}/>
                     </button>
 
-                    {/* Upload image from gallery */}
                     <button type="button" className="btn btn-gh" style={{fontSize:12,padding:"6px 12px"}}
                       onClick={()=>linkIconRef.current?.click()}>
                       <i className="fas fa-image"/> Image
@@ -1238,7 +1215,6 @@ export default function ProfileCreator() {
                       }}
                     />
                   </div>
-                  {/* FA icon grid */}
                   {showIconP&&(
                     <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4,maxHeight:160,overflowY:"auto",padding:2}}>
                       {LI.map(ic=>(
