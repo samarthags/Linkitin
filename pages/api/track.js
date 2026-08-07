@@ -1,10 +1,9 @@
-// pages/api/track.js
-// POST /api/track — same dedup/fingerprint logic you already had, PLUS:
-// if the tracked user is in an active duo, feed the same event into the
-// duo's combinedStats and recompute level/streak.
+// pages/api/track.js — same dedup/fingerprint logic as your original, PLUS:
+// - if the user is in an active duo, feeds combined stats + streak
+// - +10 Itin Score for every unique view (separate from Duo entirely)
 
 import clientPromise from "../../lib/mongodb";
-import { onDuoActivity } from "../../lib/duo";
+import { bumpDuoStreak } from "../../lib/duo";
 
 function makeKey(req, username, event) {
   const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim()
@@ -32,7 +31,7 @@ export default async function handler(req, res) {
     const db     = client.db(process.env.DB_NAME);
     const uname  = username.toLowerCase();
 
-    // ── Dedup (unchanged from your original) ──
+    // ── Dedup — server-side fingerprint only, no browser storage involved ──
     const key   = makeKey(req, uname, event);
     const dedup = db.collection("dedup");
     const already = await dedup.findOne({ _id: key });
@@ -42,16 +41,19 @@ export default async function handler(req, res) {
     await dedup.insertOne({ _id: key, expiresAt });
     await dedup.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, background: true });
 
-    // ── Increment the profile's own analytics (unchanged) ──
+    // ── Increment the profile's own analytics + Itin Score ──
     const inc = {};
-    if (event === "view")         inc["analytics.views"]        = 1;
+    if (event === "view") {
+      inc["analytics.views"] = 1;
+      inc["itinScore"]       = 10; // +10 per unique view, separate from Duo
+    }
     if (event === "link_click")   inc["analytics.linkClicks"]   = 1;
     if (event === "spotify_play") inc["analytics.spotifyPlays"] = 1;
     if (event === "share")        inc["analytics.shares"]       = 1;
 
     await db.collection("users").updateOne({ username: uname }, { $inc: inc });
 
-    // ── NEW: feed the same event into an active duo, if this user has one ──
+    // ── Feed an active duo, if this user has one ──
     const duo = await db.collection("duos").findOne({
       status: "active",
       $or: [{ userA: uname }, { userB: uname }],
@@ -64,7 +66,7 @@ export default async function handler(req, res) {
 
       if (Object.keys(duoInc).length) {
         await db.collection("duos").updateOne({ _id: duo._id }, { $inc: duoInc });
-        await onDuoActivity(db, duo._id, uname); // recomputes level + streak
+        await bumpDuoStreak(db, duo._id, uname);
       }
     }
 
