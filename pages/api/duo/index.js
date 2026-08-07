@@ -1,8 +1,8 @@
 // pages/api/duo/index.js
-// GET /api/duo?username=xxx — PUBLIC. Used on the profile page ([username].js)
-// to render the Dynamic Duo card. No auth required — same visibility level
-// as the rest of a public profile.
+// GET /api/duo?username=xxx — PUBLIC. Used on the profile page to render
+// the Duo badge. Level/days are computed fresh on every read from lib/duo.
 import clientPromise from "../../../lib/mongodb";
+import { bondDays, levelFromDays, daysToNextLevel } from "../../../lib/duo";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
@@ -27,12 +27,16 @@ export default async function handler(req, res) {
       db.collection("users").findOne({ username: partnerUsername }, { projection: { name: 1, avatar: 1, username: 1 } }),
     ]);
 
+    const daysBonded = bondDays(duo.startDate);
+
     return res.status(200).json({
       duo: {
-        startDate:     duo.startDate,
-        level:         duo.level || 1,
-        streak:        duo.streak || { current: 0, longest: 0 },
-        combinedStats: duo.combinedStats || { views: 0, clicks: 0, shares: 0 },
+        startDate:       duo.startDate,
+        daysBonded,
+        level:           levelFromDays(daysBonded),
+        daysToNextLevel: daysToNextLevel(daysBonded),
+        streak:          duo.streak || { current: 0, longest: 0 },
+        combinedStats:   duo.combinedStats || { views: 0, clicks: 0, shares: 0 },
         me,
         partner,
       },
