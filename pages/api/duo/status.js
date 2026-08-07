@@ -1,6 +1,7 @@
 // pages/api/duo/status.js — NO-AUTH TEST VERSION
 // GET ?username=xxx — dashboard duo state for that username.
 import clientPromise from "../../../lib/mongodb";
+import { bondDays, levelFromDays, daysToNextLevel } from "../../../lib/duo";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
@@ -27,14 +28,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ status, partner });
     }
 
+    const daysBonded = bondDays(doc.startDate);
+
     return res.status(200).json({
       status: "active",
       partner,
       duo: {
-        startDate:     doc.startDate,
-        level:         doc.level || 1,
-        streak:        doc.streak || { current: 0, longest: 0 },
-        combinedStats: doc.combinedStats || { views: 0, clicks: 0, shares: 0 },
+        startDate:       doc.startDate,
+        daysBonded,
+        level:           levelFromDays(daysBonded),
+        daysToNextLevel: daysToNextLevel(daysBonded),
+        streak:          doc.streak || { current: 0, longest: 0 },
+        combinedStats:   doc.combinedStats || { views: 0, clicks: 0, shares: 0 },
       },
     });
   } catch (err) {
