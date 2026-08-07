@@ -1,9 +1,9 @@
 // components/DuoManager.jsx — NO-AUTH TEST VERSION
-// Pass the CURRENT user's username as a prop (from your dashboard's
-// `saved.username` — same value you already have on the localStorage-based
-// dashboard). No session lookups.
+// Dashboard-only: invites are sent AND accepted/declined here, never on
+// the public profile page (public side only ever displays the DuoBadge,
+// read-only). Pass the current user's username as a prop.
 import { useState, useEffect, useCallback } from "react";
-import DuoCard from "./DuoCard";
+import DuoBadge from "./DuoBadge";
 
 const AC = "#6C63FF";
 
@@ -82,7 +82,9 @@ export default function DuoManager({ username }) {
 
       {status === "active" && data?.duo && (
         <>
-          <DuoCard duo={{ ...data.duo, me: null, partner: data.partner }} />
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            <DuoBadge duo={{ ...data.duo, me: { username }, partner: data.partner }} />
+          </div>
           <button className="btn btn-d" style={{ width: "100%" }} onClick={remove}>
             <i className="fas fa-heart-crack"/> End Duo
           </button>
