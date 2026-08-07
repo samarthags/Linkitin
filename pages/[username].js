@@ -3,7 +3,8 @@
 import Head from "next/head";
 import { useState, useEffect } from "react";
 import clientPromise from "../lib/mongodb";
-import DuoCard from "../components/DuoCard";
+import DuoBadge from "../components/DuoBadge";
+import ItinScoreBadge from "../components/ItinScoreBadge";
 
 // ─── Cloudinary upload helper ─────────────────────────────────────────────────
 async function uploadToCloudinary(base64DataUri, folder = "linkitin") {
@@ -711,8 +712,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         {/* theme accent underline */}
         <div style={{width:40,height:2,borderRadius:2,background:theme.accent,margin:"-10px auto 20px",opacity:.6}}/>
 
-        {/* ── Dynamic Duo card ── */}
-        {duo && <div className="s3"><DuoCard duo={duo} /></div>}
+        {/* ── Duo badge + Itin Score badge (click Duo badge for full modal) ── */}
+        <div className="s3" style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
+          <ItinScoreBadge username={user.username} />
+          {duo && <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />}
+        </div>
 
         {socials.length > 0 && (
           <div className="soc-row s3">
