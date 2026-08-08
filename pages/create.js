@@ -9,7 +9,7 @@ function loadStyles() {
   _stylesLoaded = true;
   [
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css",
-    "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+    "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Sora:wght@300;400;500;600;700;800&display=swap",
   ].forEach(href => {
     if (document.querySelector(`link[href="${href}"]`)) return;
     const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href;
@@ -20,13 +20,13 @@ function loadStyles() {
   s.textContent = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#f4f5f9;color:#111827;-webkit-font-smoothing:antialiased;}
+body{font-family:'Sora',system-ui,sans-serif;background:#fafaf7;color:#0a0a0a;-webkit-font-smoothing:antialiased;}
 *{-webkit-tap-highlight-color:transparent;}
 *:focus{outline:none!important;}
 button::-moz-focus-inner{border:0;}
-input:focus,textarea:focus{border-color:#6C63FF!important;box-shadow:0 0 0 3px rgba(108,99,255,0.15)!important;}
+input:focus,textarea:focus{border-color:#0a0a0a!important;box-shadow:0 0 0 3px rgba(215,255,63,.35)!important;}
 ::-webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px;}
+::-webkit-scrollbar-thumb{background:#d8d8cc;border-radius:4px;}
 @keyframes mFadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 @keyframes mSpin{to{transform:rotate(360deg);}}
 @keyframes mPop{0%{opacity:0;transform:scale(.84);}100%{opacity:1;transform:scale(1);}}
@@ -35,55 +35,54 @@ input:focus,textarea:focus{border-color:#6C63FF!important;box-shadow:0 0 0 3px r
 .pop{animation:mPop .38s cubic-bezier(.22,.68,0,1.2) both;}
 .spin{animation:mSpin .8s linear infinite;}
 .confetti{position:absolute;width:9px;height:9px;border-radius:2px;animation:mFall 1.5s ease-out forwards;}
-.inp{width:100%;padding:11px 14px;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;color:#111827;font-family:inherit;font-size:14px;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;}
-.inp::placeholder{color:#adb5c0;}
-.inp:hover:not(:focus){border-color:#c5c8f6;}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 20px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background .14s,transform .1s,box-shadow .14s;user-select:none;white-space:nowrap;line-height:1;-webkit-appearance:none;}
+.inp{width:100%;padding:11px 14px;background:#fff;border:2px solid #0a0a0a;border-radius:10px;color:#0a0a0a;font-family:inherit;font-size:14px;transition:box-shadow .15s;-webkit-appearance:none;}
+.inp::placeholder{color:#a5a598;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 20px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .14s,transform .1s,box-shadow .14s;user-select:none;white-space:nowrap;line-height:1;-webkit-appearance:none;}
 .btn:active{transform:scale(.96)!important;box-shadow:none!important;}
 .btn:disabled{opacity:.36;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
-.btn-p{background:#6C63FF;color:#fff;}.btn-p:hover{background:#5a52e8;box-shadow:0 4px 18px rgba(108,99,255,.3);transform:translateY(-1px);}
-.btn-s{background:#fff;color:#374151;border:1.5px solid #e5e7eb;}.btn-s:hover{background:#f9fafb;transform:translateY(-1px);}
-.btn-g{background:#10b981;color:#fff;}.btn-g:hover{background:#059669;box-shadow:0 4px 18px rgba(16,185,129,.3);transform:translateY(-1px);}
-.btn-gh{background:transparent;color:#6b7280;border:1.5px solid #e5e7eb;}.btn-gh:hover{background:#f9fafb;color:#374151;}
-.btn-d{background:transparent;color:#ef4444;border:1.5px solid #fca5a5;padding:7px 12px;font-size:13px;}.btn-d:hover{background:#fef2f2;border-color:#ef4444;}
-.tag{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all .14s ease;user-select:none;}
-.tag:hover{border-color:#6C63FF;color:#6C63FF;background:#f2f0ff;}.tag:active{transform:scale(.95);}
-.tag.on{background:#6C63FF;border-color:#6C63FF;color:#fff;}
-.card{background:#fff;border:1.5px solid #e9eaf0;border-radius:16px;padding:20px;}
-.sdot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #e5e7eb;background:#fff;color:#9ca3af;transition:all .2s ease;flex-shrink:0;}
-.sdot.done{background:#10b981;border-color:#10b981;color:#fff;}
-.sdot.active{background:#6C63FF;border-color:#6C63FF;color:#fff;box-shadow:0 0 0 4px rgba(108,99,255,.16);}
-.slbl{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#b0b7c3;white-space:nowrap;margin-top:4px;}
-.slbl.active{color:#6C63FF;}.slbl.done{color:#10b981;}
-.sc{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fff;border:1.5px solid #e9eaf0;border-radius:10px;transition:border-color .15s,box-shadow .15s;}
-.sc:focus-within{border-color:#6C63FF;box-shadow:0 0 0 3px rgba(108,99,255,.1);}
-.sc-inp{flex:1;border:none;background:transparent;font-family:inherit;font-size:13.5px;color:#111827;min-width:0;}
-.sc-inp::placeholder{color:#adb5c0;}
-.lr{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fff;border:1.5px solid #e9eaf0;border-radius:10px;transition:border-color .15s,box-shadow .15s;}
-.lr:hover{border-color:#c7c3f9;box-shadow:0 2px 8px rgba(108,99,255,.07);}
-.sring{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#6C63FF,#10b981);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 32px rgba(108,99,255,.28);}
-.lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;}
-.hint{font-size:12px;color:#6b7280;margin-top:5px;display:flex;align-items:center;gap:5px;}
-.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:#d1fae5;color:#065f46;font-size:11px;font-weight:600;}
-.aibadge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:linear-gradient(135deg,#f0edff,#e0fdf4);border:1px solid #c4b5fd;font-size:11px;font-weight:700;color:#5b21b6;}
-.cc{font-size:11px;color:#adb5c0;text-align:right;margin-top:4px;}
-.cc.w{color:#f59e0b;}.cc.o{color:#ef4444;}
-.topbar{background:#fff;border-bottom:1px solid #e9eaf0;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.footer{text-align:center;padding:24px 16px 20px;font-size:13px;color:#9ca3af;}
-.divider{height:1px;background:#f0f0f5;margin:18px 0;}
-.urlbox{display:flex;align-items:center;gap:10px;background:#f8f7ff;border:1.5px solid #ede9ff;border-radius:12px;padding:12px 16px;}
+.btn-p{background:#0a0a0a;color:#d7ff3f;}.btn-p:hover{background:#1a1a1a;transform:translateY(-1px);}
+.btn-s{background:#fff;color:#0a0a0a;border:2px solid #0a0a0a;}.btn-s:hover{background:#f3f3ea;transform:translateY(-1px);}
+.btn-g{background:#0a0a0a;color:#d7ff3f;border:2px solid #d7ff3f;}.btn-g:hover{transform:translateY(-1px);}
+.btn-gh{background:transparent;color:#0a0a0a;border:1.5px solid #d8d8cc;}.btn-gh:hover{background:#f3f3ea;}
+.btn-d{background:transparent;color:#c22;border:1.5px solid #f0b3b3;padding:7px 12px;font-size:13px;}.btn-d:hover{background:#fef2f2;border-color:#c22;}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;border:1.5px solid #d8d8cc;background:#fff;color:#0a0a0a;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .14s ease;user-select:none;}
+.tag:hover{border-color:#0a0a0a;background:#f8fbe8;}.tag:active{transform:scale(.95);}
+.tag.on{background:#0a0a0a;border-color:#0a0a0a;color:#d7ff3f;}
+.card{background:#fff;border:2px solid #0a0a0a;border-radius:16px;padding:20px;}
+.sdot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #d8d8cc;background:#fff;color:#8a8a7c;transition:all .2s ease;flex-shrink:0;}
+.sdot.done{background:#0a0a0a;border-color:#0a0a0a;color:#d7ff3f;}
+.sdot.active{background:#d7ff3f;border-color:#0a0a0a;color:#0a0a0a;box-shadow:0 0 0 4px rgba(215,255,63,.28);}
+.slbl{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#b0b0a0;white-space:nowrap;margin-top:4px;}
+.slbl.active{color:#0a0a0a;}.slbl.done{color:#0a0a0a;}
+.sc{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fff;border:1.5px solid #e5e5da;border-radius:10px;transition:border-color .15s;}
+.sc:focus-within{border-color:#0a0a0a;}
+.sc-inp{flex:1;border:none;background:transparent;font-family:inherit;font-size:13.5px;color:#0a0a0a;min-width:0;}
+.sc-inp::placeholder{color:#a5a598;}
+.lr{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fff;border:1.5px solid #e5e5da;border-radius:10px;transition:border-color .15s;}
+.lr:hover{border-color:#0a0a0a;}
+.sring{width:84px;height:84px;border-radius:50%;background:#0a0a0a;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.lbl{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#8a8a7c;margin-bottom:8px;}
+.hint{font-size:12px;color:#6b6b60;margin-top:5px;display:flex;align-items:center;gap:5px;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:#d7ff3f;color:#0a0a0a;font-size:11px;font-weight:700;}
+.aibadge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:#0a0a0a;border:none;font-size:11px;font-weight:700;color:#d7ff3f;}
+.cc{font-size:11px;color:#a5a598;text-align:right;margin-top:4px;}
+.cc.w{color:#c98a00;}.cc.o{color:#c22;}
+.topbar{background:#fafaf7;border-bottom:2px solid #0a0a0a;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.footer{text-align:center;padding:24px 16px 20px;font-size:13px;color:#8a8a7c;}
+.divider{height:1.5px;background:#e5e5da;margin:18px 0;}
+.urlbox{display:flex;align-items:center;gap:10px;background:#f8fbe8;border:1.5px solid #d7ff3f;border-radius:12px;padding:12px 16px;}
 /* search input inside tag sections */
-.tag-search{width:100%;padding:8px 12px;background:#f8f7ff;border:1.5px solid #ede9ff;border-radius:8px;font-family:inherit;font-size:13px;color:#111827;margin-bottom:10px;}
-.tag-search::placeholder{color:#adb5c0;}
-.tag-search:focus{border-color:#6C63FF;box-shadow:0 0 0 2px rgba(108,99,255,.12);}
+.tag-search{width:100%;padding:8px 12px;background:#f8fbe8;border:1.5px solid #d7ff3f;border-radius:8px;font-family:inherit;font-size:13px;color:#0a0a0a;margin-bottom:10px;}
+.tag-search::placeholder{color:#a5a598;}
+.tag-search:focus{border-color:#0a0a0a;}
 /* share overlay */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:1000;display:flex;align-items:flex-end;justify-content:center;}
-.sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;animation:mFadeUp .22s ease;}
+.overlay{position:fixed;inset:0;background:rgba(10,10,10,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;}
+.sheet{background:#fafaf7;border:2px solid #0a0a0a;border-bottom:none;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;animation:mFadeUp .22s ease;}
 .share-item{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;user-select:none;width:68px;padding:6px;border-radius:12px;transition:background .14s;}
-.share-item:hover{background:#f5f5f5;}
+.share-item:hover{background:#f0f0e5;}
 .share-item:active{transform:scale(.9);}
-.share-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;}
-.share-label{font-size:11px;font-weight:600;color:#374151;text-align:center;line-height:1.2;}
+.share-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1.5px solid rgba(10,10,10,.08);}
+.share-label{font-size:11px;font-weight:700;color:#0a0a0a;text-align:center;line-height:1.2;}
 @media(max-width:520px){
   .card{padding:14px;}
   .btn{padding:10px 14px;font-size:13px;}
@@ -106,7 +105,8 @@ function stripAI(t) {
 
 /* ─── Constants ─── */
 const LS_KEY   = "mws_v6";
-const AC       = "#6C63FF";
+const AC       = "#0a0a0a"; // primary accent — now black (lime is the secondary/highlight color, used directly where needed)
+const LIME     = "#d7ff3f";
 const GROQ_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
 const SM = {
@@ -377,7 +377,7 @@ function Topbar({right}) {
 }
 const Footer = () => (
   <div className="footer" style={{padding:"16px 20px 32px",textAlign:"center"}}>
-    <div style={{fontSize:11,color:"#adb5c0",lineHeight:1.7,maxWidth:360,margin:"0 auto 14px",background:"#f8f9fb",border:"1px solid #e9eaf0",borderRadius:10,padding:"10px 14px"}}>
+    <div style={{fontSize:11,color:"#adb5c0",lineHeight:1.7,maxWidth:360,margin:"0 auto 14px",background:"#f8f9fb",border:"1px solid #e5e5da",borderRadius:10,padding:"10px 14px"}}>
       <i className="fas fa-circle-info" style={{color:AC,marginRight:5,fontSize:12}}/>
       You can <strong style={{color:"#374151"}}>edit</strong>, <strong style={{color:"#374151"}}>delete</strong> or <strong style={{color:"#374151"}}>view stats</strong> from <strong style={{color:"#374151"}}>this device and browser</strong> only.<br/>
       <span style={{color:"#b0b7c3"}}>Do not clear browser data to keep access to your profile settings.</span>
@@ -502,7 +502,7 @@ function SpotifySearch({ value, trackId, onSelect, onClear }) {
       </div>
 
       {focused && results.length > 0 && (
-        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e9eaf0",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,maxHeight:280,overflowY:"auto"}}>
+        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e5e5da",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,maxHeight:280,overflowY:"auto"}}>
           {results.map(track => (
             <div key={track.id}
               style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",transition:"background .12s",borderBottom:"1px solid #f5f5f5"}}
@@ -524,13 +524,13 @@ function SpotifySearch({ value, trackId, onSelect, onClear }) {
                 <div style={{fontWeight:600,fontSize:13,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{track.name}</div>
                 <div style={{fontSize:12,color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{track.artist}</div>
               </div>
-              <i className="fas fa-plus" style={{color:"#6C63FF",fontSize:12,flexShrink:0}}/>
+              <i className="fas fa-plus" style={{color:"#0a0a0a",fontSize:12,flexShrink:0}}/>
             </div>
           ))}
         </div>
       )}
       {focused && query.length >= 2 && results.length === 0 && !loading && (
-        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e9eaf0",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,padding:"16px",textAlign:"center",color:"#9ca3af",fontSize:13}}>
+        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#fff",border:"1.5px solid #e5e5da",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:200,padding:"16px",textAlign:"center",color:"#9ca3af",fontSize:13}}>
           No songs found for "{query}"
         </div>
       )}
@@ -785,7 +785,7 @@ export default function ProfileCreator() {
 
   /* ════ LOADING ════ */
   if(view==="loading") return(
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f4f5f9"}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#fafaf7"}}>
       <i className="fas fa-spinner spin" style={{fontSize:32,color:AC}}/>
     </div>
   );
@@ -795,7 +795,7 @@ export default function ProfileCreator() {
     const url=saved.publishedUrl||`${typeof window!=="undefined"?window.location.origin:"https://linkitin.site"}/${saved.username}`;
     const date=new Date(saved.savedAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
     return(
-      <div style={{minHeight:"100vh",background:"#f4f5f9",paddingBottom:48}}>
+      <div style={{minHeight:"100vh",background:"#fafaf7",paddingBottom:48}}>
         {showShare&&<ShareSheet url={url} onClose={()=>setShowShare(false)} onCopy={()=>{navigator.clipboard?.writeText(url).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2200);}}/>}
         <Topbar right={
           <button className="btn btn-s" style={{fontSize:12,padding:"7px 14px"}} onClick={()=>startEdit(saved)}>
@@ -868,7 +868,7 @@ export default function ProfileCreator() {
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
               {[
-                {label:"Profile Views",   value:liveStats?.views||0,         icon:"fas fa-eye",                         color:"#6C63FF",bg:"#f0edff"},
+                {label:"Profile Views",   value:liveStats?.views||0,         icon:"fas fa-eye",                         color:"#0a0a0a",bg:"#f8fbe8"},
                 {label:"Link Clicks",     value:liveStats?.linkClicks||0,    icon:"fas fa-arrow-up-right-from-square",   color:"#10b981",bg:"#ecfdf5"},
                 {label:"Spotify Plays",   value:liveStats?.spotifyPlays||0,  icon:"fab fa-spotify",                     color:"#1DB954",bg:"#ecfdf5"},
                 {label:"Shares",          value:liveStats?.shares||0,        icon:"fas fa-share-nodes",                  color:"#f59e0b",bg:"#fffbeb"},
@@ -891,7 +891,7 @@ export default function ProfileCreator() {
   if(view==="success"){
     const url=getUrl();
     return(
-      <div style={{minHeight:"100vh",background:"#f4f5f9",display:"flex",flexDirection:"column"}}>
+      <div style={{minHeight:"100vh",background:"#fafaf7",display:"flex",flexDirection:"column"}}>
         {showShare&&<ShareSheet url={url} onClose={()=>setShowShare(false)} onCopy={copyLink}/>}
         <Topbar/>
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"32px 16px"}}>
@@ -926,7 +926,7 @@ export default function ProfileCreator() {
 
   /* ════ FORM ════ */
   return(
-    <div style={{minHeight:"100vh",background:"#f4f5f9",paddingBottom:48}}>
+    <div style={{minHeight:"100vh",background:"#fafaf7",paddingBottom:48}}>
       <Head><title>Create Your Profile | Linkitin</title></Head>
       {showShare&&<ShareSheet url={getUrl()} onClose={()=>setShowShare(false)} onCopy={copyLink}/> }
       <Topbar right={
@@ -948,7 +948,7 @@ export default function ProfileCreator() {
                   <div className={`sdot ${st}`}>{st==="done"?<i className="fas fa-check" style={{fontSize:10}}/>:s}</div>
                   <span className={`slbl ${st}`}>{lbl}</span>
                 </div>
-                {s<5&&<div style={{flex:1,height:2,margin:"0 3px",marginBottom:18,borderRadius:1,background:step>s?"#10b981":"#e9eaf0",transition:"background .3s"}}/>}
+                {s<5&&<div style={{flex:1,height:2,margin:"0 3px",marginBottom:18,borderRadius:1,background:step>s?"#10b981":"#e5e5da",transition:"background .3s"}}/>}
               </div>
             );
           })}
@@ -1069,7 +1069,7 @@ export default function ProfileCreator() {
 
             <div className="card">
               <Lbl>Profile Photo</Lbl>
-              <div style={{display:"flex",alignItems:"center",gap:14,padding:14,borderRadius:12,cursor:"pointer",border:`2px dashed ${dragOver?"#6C63FF":form.avatar?"#6C63FF":"#e5e7eb"}`,background:dragOver?"#f2f0ff":form.avatar?"#f8f7ff":"#fafafa",transition:"all .2s"}}
+              <div style={{display:"flex",alignItems:"center",gap:14,padding:14,borderRadius:12,cursor:"pointer",border:`2px dashed ${dragOver?"#0a0a0a":form.avatar?"#0a0a0a":"#d8d8cc"}`,background:dragOver?"#f8fbe8":form.avatar?"#f8fbe8":"#fafafa",transition:"all .2s"}}
                 onClick={()=>fileRef.current?.click()} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);processImg(e.dataTransfer.files[0]);}}>
                 {form.avatar?(
                   <>
@@ -1219,7 +1219,7 @@ export default function ProfileCreator() {
                     <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4,maxHeight:160,overflowY:"auto",padding:2}}>
                       {LI.map(ic=>(
                         <button key={ic} type="button"
-                          style={{width:36,height:36,borderRadius:8,border:`1.5px solid ${newLink.icon===ic?"#6C63FF":"#e5e7eb"}`,background:newLink.icon===ic?"#f0edff":"#fff",color:newLink.icon===ic?"#6C63FF":"#6b7280",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
+                          style={{width:36,height:36,borderRadius:8,border:`1.5px solid ${newLink.icon===ic?"#0a0a0a":"#d8d8cc"}`,background:newLink.icon===ic?"#f8fbe8":"#fff",color:newLink.icon===ic?"#0a0a0a":"#6b7280",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
                           onClick={()=>{setNewLink(p=>({...p,icon:ic}));setShowIconP(false);}}>
                           <i className={ic}/>
                         </button>
@@ -1274,8 +1274,8 @@ export default function ProfileCreator() {
               <SH icon="fas fa-rocket" title={saved?"Update Profile":"Ready to Publish?"} sub="Check your checklist and go live."/>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
                 {checklist.map(item=>(
-                  <div key={item.t} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:item.d?"#f0fdf4":"#fafafa",border:`1.5px solid ${item.d?"#bbf7d0":"#e9eaf0"}`,borderRadius:10}}>
-                    <i className={item.d?"fas fa-circle-check":"far fa-circle"} style={{color:item.d?"#10b981":"#d1d5db",fontSize:16,flexShrink:0}}/>
+                  <div key={item.t} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:item.d?"#f0fdf4":"#fafafa",border:`1.5px solid ${item.d?"#bbf7d0":"#e5e5da"}`,borderRadius:10}}>
+                    <i className={item.d?"fas fa-circle-check":"far fa-circle"} style={{color:item.d?"#10b981":"#d8d8cc",fontSize:16,flexShrink:0}}/>
                     <span style={{fontSize:14,fontWeight:item.d?600:400,color:item.d?"#065f46":"#9ca3af",flex:1}}>{item.t}</span>
                     {item.d&&<i className="fas fa-check" style={{color:"#10b981",fontSize:11}}/>}
                   </div>
