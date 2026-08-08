@@ -4,6 +4,7 @@ import Head from "next/head";
 import { useState, useEffect } from "react";
 import clientPromise from "../lib/mongodb";
 import DuoBadge from "../components/DuoBadge";
+import ItinScoreBadge from "../components/ItinScoreBadge";
 
 // ─── Cloudinary upload helper ─────────────────────────────────────────────────
 async function uploadToCloudinary(base64DataUri, folder = "linkitin") {
@@ -116,13 +117,6 @@ function track(username, event) {
   }).catch(()=>{});
 }
 
-function tierForScore(score) {
-  if (score >= 75) return "Platinum";
-  if (score >= 50) return "Gold";
-  if (score >= 25) return "Silver";
-  return "Bronze";
-}
-
 // ─── Loading Screen ────────────────────────────────────────────────────────────
 function LoadingScreen({ visible }) {
   return (
@@ -168,77 +162,6 @@ function LoadingScreen({ visible }) {
         <span /><span /><span />
       </div>
     </div>
-  );
-}
-
-// ─── Itin Score: compact pill + info modal ────────────────────────────────────
-function ItinScoreModal({ score, tier, onClose }) {
-  const tiers = [
-    { name: "Bronze",   min: 0,  max: 24 },
-    { name: "Silver",   min: 25, max: 49 },
-    { name: "Gold",     min: 50, max: 74 },
-    { name: "Platinum", min: 75, max: 100 },
-  ];
-  return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(10,10,10,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#fafaf7",border:"2px solid #0a0a0a",borderRadius:20,maxWidth:340,width:"100%",padding:"22px 22px 24px",animation:"ssUp .28s cubic-bezier(.34,1.4,.64,1) both"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-          <div>
-            <div style={{fontSize:10,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#8a8a7c",marginBottom:4}}>Itin Score</div>
-            <div style={{fontSize:36,fontWeight:900,lineHeight:1,color:"#0a0a0a"}}>{score}</div>
-          </div>
-          <button onClick={onClose} style={{width:30,height:30,borderRadius:"50%",background:"#0a0a0a",border:"none",color:"#fff",fontSize:15,cursor:"pointer",flexShrink:0}}>×</button>
-        </div>
-        <div style={{fontSize:12.5,color:"#5c5c50",marginBottom:16,lineHeight:1.5}}>
-          Your current tier is <strong style={{color:"#0a0a0a"}}>{tier}</strong>. Keep engaging on your profile to level up.
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:7}}>
-          {tiers.map(t => (
-            <div key={t.name} style={{
-              display:"flex",justifyContent:"space-between",alignItems:"center",
-              fontSize:12.5,padding:"9px 13px",borderRadius:11,fontWeight:700,
-              background: t.name===tier ? "#0a0a0a" : "#f3f3ea",
-              color: t.name===tier ? "#d7ff3f" : "#0a0a0a",
-            }}>
-              <span>{t.name}</span>
-              <span style={{opacity:.75}}>{t.min}–{t.max}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CompactItinBadge({ username }) {
-  const [score, setScore] = useState(null);
-  const [open,  setOpen]  = useState(false);
-
-  useEffect(() => {
-    if (!username) return;
-    fetch(`/api/itinscore?username=${username}`)
-      .then(r => r.json())
-      .then(d => setScore(typeof d?.score === "number" ? d.score : 0))
-      .catch(() => setScore(0));
-  }, [username]);
-
-  if (score === null) return null;
-  const tier = tierForScore(score);
-
-  return (
-    <>
-      <span
-        className="itin-pill"
-        onClick={() => setOpen(true)}
-        title="Itin Score"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e)=>{ if(e.key==="Enter") setOpen(true); }}
-      >
-        <i className="fas fa-bolt"/>{score}
-      </span>
-      {open && <ItinScoreModal score={score} tier={tier} onClose={()=>setOpen(false)}/>}
-    </>
   );
 }
 
@@ -571,7 +494,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
           .themed-bg{background:var(--theme-hero,#fafaf7);min-height:100vh;}
-          .soc-btn:hover{transform:translateY(-3px) scale(1.06);}
+          .soc-btn:hover{transform:translateY(-3px) scale(1.06);box-shadow:0 6px 16px rgba(10,10,10,.08);border-color:#0a0a0a;}
           .lbtn:hover{border-color:#0a0a0a!important;box-shadow:0 4px 14px rgba(10,10,10,.08)!important;}
           .foot-cta:hover{color:#0a0a0a!important;}
 
@@ -653,21 +576,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           }
           .badge-pill i{ font-size:10px; color:var(--theme-accent,#cfe95f); }
 
-          /* ── Itin score pill — count only, tap for details ── */
-          .itin-pill{
-            display:inline-flex;align-items:center;gap:5px;
-            background:#fff;
-            border:2px solid #0a0a0a;
-            border-radius:999px;padding:6px 12px;
-            font-size:12px;font-weight:800;
-            color:#0a0a0a;
-            cursor:pointer;
-            transition:background .15s,transform .1s;
-            user-select:none;
-          }
-          .itin-pill:hover{background:#f3f3ea;}
-          .itin-pill:active{transform:scale(.94);}
-          .itin-pill i{font-size:10px;color:#0a0a0a;opacity:.75;}
+          /* ── Badge row items pop in one after another, staggered by inline delay ── */
+          @keyframes badgePop{from{opacity:0;transform:translateY(6px) scale(.9);}to{opacity:1;transform:translateY(0) scale(1);}}
+          .bp{animation:badgePop .42s cubic-bezier(.34,1.56,.64,1) both;}
 
           .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
           .bio-text{font-size:15px;line-height:1.7;color:#2e2e28;text-align:center;margin-bottom:24px;font-weight:400;}
@@ -724,9 +635,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sfab:hover{transform:translateY(-2px) scale(1.05);background:rgba(255,255,255,.78);}
           .sfab:active{transform:scale(.93);}
 
-          /* ── Duo badge — fixed in place, bottom-left, always visible while scrolling ── */
-          .duo-fixed{position:fixed;left:16px;bottom:16px;z-index:80;}
-
           @media(max-width:420px){
             .hero{height:48vh;}
             .id-block{margin-top:-44px;}
@@ -778,26 +686,39 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <div className="badge-row">
           {/* Age pill — click to toggle between age and birthday */}
           {userAge && user.dob && (
-            <span
-              className="age-pill"
-              onClick={() => setShowBirthday(v => !v)}
-              title={showBirthday ? "Show age" : "Show birthday"}
-            >
-              <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
-              {showBirthday
-                ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : `${userAge} y/o`}
+            <span className={reveal("bp")} style={{animationDelay:"0s"}}>
+              <span
+                className="age-pill"
+                onClick={() => setShowBirthday(v => !v)}
+                title={showBirthday ? "Show age" : "Show birthday"}
+              >
+                <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
+                {showBirthday
+                  ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                  : `${userAge} y/o`}
+              </span>
             </span>
           )}
           {/* Advanced badge pill */}
           {badgeLabel && (
-            <span className="badge-pill">
-              {badgeIcon && <i className={badgeIcon}/>}
-              {badgeLabel}
+            <span className={reveal("bp")} style={{animationDelay:".06s"}}>
+              <span className="badge-pill">
+                {badgeIcon && <i className={badgeIcon}/>}
+                {badgeLabel}
+              </span>
             </span>
           )}
-          {/* Itin score — compact, tap for tier breakdown */}
-          <CompactItinBadge username={user.username} />
+          {/* Itin score — compact, tap for full tier breakdown. Works for any
+              profile: it fetches live by user.username, nothing hardcoded. */}
+          <span className={reveal("bp")} style={{animationDelay:".12s"}}>
+            <ItinScoreBadge username={user.username} />
+          </span>
+          {/* Dynamic Duo — sits in the same line as everything else now */}
+          {duo && (
+            <span className={reveal("bp")} style={{animationDelay:".18s"}}>
+              <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
+            </span>
+          )}
         </div>
       </div>
 
@@ -812,8 +733,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               const m=PLAT[pl];
               return(
                 <a key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className="soc-btn" title={m.n} aria-label={m.n}
-                  style={{color:m.c, boxShadow:`0 0 0 1px ${m.c}26, 0 4px 14px ${m.c}30`}}>
+                  className="soc-btn" title={m.n} aria-label={m.n} style={{color:m.c}}>
                   <i className={m.i}/>
                 </a>
               );
@@ -883,13 +803,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         </div>
 
       </div>
-
-      {/* ── Duo badge — fixed position, doesn't move with content ── */}
-      {duo && (
-        <div className={`duo-fixed${reveal("s-fab")}`}>
-          <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-        </div>
-      )}
 
       {shareOpen&&<ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
     </>
