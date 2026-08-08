@@ -4,7 +4,6 @@ import Head from "next/head";
 import { useState, useEffect } from "react";
 import clientPromise from "../lib/mongodb";
 import DuoBadge from "../components/DuoBadge";
-import ItinScoreBadge from "../components/ItinScoreBadge";
 
 // ─── Cloudinary upload helper ─────────────────────────────────────────────────
 async function uploadToCloudinary(base64DataUri, folder = "linkitin") {
@@ -117,6 +116,13 @@ function track(username, event) {
   }).catch(()=>{});
 }
 
+function tierForScore(score) {
+  if (score >= 75) return "Platinum";
+  if (score >= 50) return "Gold";
+  if (score >= 25) return "Silver";
+  return "Bronze";
+}
+
 // ─── Loading Screen ────────────────────────────────────────────────────────────
 function LoadingScreen({ visible }) {
   return (
@@ -162,6 +168,77 @@ function LoadingScreen({ visible }) {
         <span /><span /><span />
       </div>
     </div>
+  );
+}
+
+// ─── Itin Score: compact pill + info modal ────────────────────────────────────
+function ItinScoreModal({ score, tier, onClose }) {
+  const tiers = [
+    { name: "Bronze",   min: 0,  max: 24 },
+    { name: "Silver",   min: 25, max: 49 },
+    { name: "Gold",     min: 50, max: 74 },
+    { name: "Platinum", min: 75, max: 100 },
+  ];
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(10,10,10,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fafaf7",border:"2px solid #0a0a0a",borderRadius:20,maxWidth:340,width:"100%",padding:"22px 22px 24px",animation:"ssUp .28s cubic-bezier(.34,1.4,.64,1) both"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#8a8a7c",marginBottom:4}}>Itin Score</div>
+            <div style={{fontSize:36,fontWeight:900,lineHeight:1,color:"#0a0a0a"}}>{score}</div>
+          </div>
+          <button onClick={onClose} style={{width:30,height:30,borderRadius:"50%",background:"#0a0a0a",border:"none",color:"#fff",fontSize:15,cursor:"pointer",flexShrink:0}}>×</button>
+        </div>
+        <div style={{fontSize:12.5,color:"#5c5c50",marginBottom:16,lineHeight:1.5}}>
+          Your current tier is <strong style={{color:"#0a0a0a"}}>{tier}</strong>. Keep engaging on your profile to level up.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:7}}>
+          {tiers.map(t => (
+            <div key={t.name} style={{
+              display:"flex",justifyContent:"space-between",alignItems:"center",
+              fontSize:12.5,padding:"9px 13px",borderRadius:11,fontWeight:700,
+              background: t.name===tier ? "#0a0a0a" : "#f3f3ea",
+              color: t.name===tier ? "#d7ff3f" : "#0a0a0a",
+            }}>
+              <span>{t.name}</span>
+              <span style={{opacity:.75}}>{t.min}–{t.max}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactItinBadge({ username }) {
+  const [score, setScore] = useState(null);
+  const [open,  setOpen]  = useState(false);
+
+  useEffect(() => {
+    if (!username) return;
+    fetch(`/api/itinscore?username=${username}`)
+      .then(r => r.json())
+      .then(d => setScore(typeof d?.score === "number" ? d.score : 0))
+      .catch(() => setScore(0));
+  }, [username]);
+
+  if (score === null) return null;
+  const tier = tierForScore(score);
+
+  return (
+    <>
+      <span
+        className="itin-pill"
+        onClick={() => setOpen(true)}
+        title="Itin Score"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e)=>{ if(e.key==="Enter") setOpen(true); }}
+      >
+        <i className="fas fa-bolt"/>{score}
+      </span>
+      {open && <ItinScoreModal score={score} tier={tier} onClose={()=>setOpen(false)}/>}
+    </>
   );
 }
 
@@ -245,8 +322,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       .catch(() => {});
   }, [user?.username]);
 
-  /* ── Fixed light theme — TeenStore-inspired: cream bg, black text, lime accent ── */
-  const theme = { accent:"#d7ff3f", glow:"rgba(215,255,63,.45)", hero:"#fafaf7", badge:"#0a0a0a" };
+  /* ── Fixed light theme — TeenStore-inspired: cream bg, black text, muted lime accent ── */
+  const theme = { accent:"#cfe95f", glow:"rgba(207,233,95,.22)", hero:"#fafaf7", badge:"#0a0a0a" };
 
   useEffect(()=>{
     if (!user) { setLoading(false); return; }
@@ -409,6 +486,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     "--theme-hero":   theme.hero,
   };
 
+  // animation classes only attach once the loading splash has cleared,
+  // so the reveal plays as a real staggered entrance instead of everything
+  // already being in its final state when the splash fades out.
+  const reveal = (cls) => (!loading ? ` ${cls}` : "");
+
   return (
     <>
       <Head>
@@ -487,40 +569,42 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           a,button{outline:none;text-decoration:none;color:inherit;}
           body{background:#fafaf7;color:#0a0a0a;font-family:'Sora',sans-serif;min-height:100vh;overflow-x:hidden;}
 
-          /* ── TeenStore-inspired light theme: cream bg, black text, lime accent ── */
+          /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
           .themed-bg{background:var(--theme-hero,#fafaf7);min-height:100vh;}
-          .soc-btn:hover{box-shadow:0 6px 16px rgba(10,10,10,.08)!important;border-color:#0a0a0a!important;}
+          .soc-btn:hover{transform:translateY(-3px) scale(1.06);}
           .lbtn:hover{border-color:#0a0a0a!important;box-shadow:0 4px 14px rgba(10,10,10,.08)!important;}
           .foot-cta:hover{color:#0a0a0a!important;}
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
           @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+          @keyframes popIn{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
           @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
 
-          .s1{animation:slideUp .6s .04s cubic-bezier(.16,1,.3,1) both;}
-          .s2{animation:slideUp .6s .12s cubic-bezier(.16,1,.3,1) both;}
-          .s3{animation:slideUp .6s .20s cubic-bezier(.16,1,.3,1) both;}
-          .s4{animation:slideUp .6s .28s cubic-bezier(.16,1,.3,1) both;}
-          .s5{animation:slideUp .6s .36s cubic-bezier(.16,1,.3,1) both;}
-          .s6{animation:slideUp .6s .44s cubic-bezier(.16,1,.3,1) both;}
-          .s7{animation:slideUp .6s .52s cubic-bezier(.16,1,.3,1) both;}
+          .s1{animation:slideUp .62s .02s cubic-bezier(.16,1,.3,1) both;}
+          .s2{animation:slideUp .62s .10s cubic-bezier(.16,1,.3,1) both;}
+          .s3{animation:slideUp .62s .18s cubic-bezier(.16,1,.3,1) both;}
+          .s4{animation:slideUp .62s .26s cubic-bezier(.16,1,.3,1) both;}
+          .s5{animation:slideUp .62s .34s cubic-bezier(.16,1,.3,1) both;}
+          .s6{animation:slideUp .62s .42s cubic-bezier(.16,1,.3,1) both;}
+          .s7{animation:slideUp .62s .50s cubic-bezier(.16,1,.3,1) both;}
+          .s-fab{animation:popIn .5s .3s cubic-bezier(.34,1.56,.64,1) both;}
 
-          .hero{position:relative;width:100%;height:52vh;min-height:280px;max-height:440px;overflow:hidden;animation:fadeIn .7s ease both;background:#fafaf7;}
+          .hero{position:relative;width:100%;height:52vh;min-height:280px;max-height:440px;overflow:hidden;animation:fadeIn .8s ease both;background:#fafaf7;}
           .hero::before{
             content:"";position:absolute;top:-20%;right:-15%;width:60%;height:70%;
-            background:radial-gradient(circle,rgba(215,255,63,.55) 0%,rgba(215,255,63,0) 70%);
+            background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(1.1) contrast(1.06) saturate(1.1);}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(1.01) contrast(1.02) saturate(1.03);}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
               to bottom,
               rgba(250,250,247,0) 0%,
-              rgba(250,250,247,.06) 45%,
-              rgba(250,250,247,.28) 65%,
-              rgba(250,250,247,.68) 82%,
-              rgba(250,250,247,.95) 94%,
+              rgba(250,250,247,.04) 45%,
+              rgba(250,250,247,.22) 65%,
+              rgba(250,250,247,.62) 82%,
+              rgba(250,250,247,.94) 94%,
               rgba(250,250,247,1) 100%
             );
           }
@@ -528,7 +612,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .hero-ph{width:100%;height:52vh;min-height:300px;max-height:460px;background:#fafaf7;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
           .hero-ph::before{
             content:"";position:absolute;top:-20%;right:-15%;width:60%;height:70%;
-            background:radial-gradient(circle,rgba(215,255,63,.55) 0%,rgba(215,255,63,0) 70%);
+            background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;
           }
           .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
@@ -553,7 +637,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .age-pill:active{transform:scale(.94);}
           .age-pill i{font-size:9px;opacity:.7;}
 
-          /* ── Badge pill — solid black + lime, matches Duo/Itin badges ── */
+          /* ── Badge pill — solid black + muted lime, matches Duo badge ── */
           .badge-pill{
             display:inline-flex;align-items:center;gap:6px;
             background:#0a0a0a;
@@ -561,20 +645,40 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             border-radius:999px;
             padding:6px 14px 6px 11px;
             font-size:12px;font-weight:800;
-            color:#d7ff3f;
+            color:var(--theme-accent,#cfe95f);
             letter-spacing:.04em;
             text-transform:uppercase;
             cursor:default;
             -webkit-tap-highlight-color:transparent;
           }
-          .badge-pill i{ font-size:10px; color:#d7ff3f; }
+          .badge-pill i{ font-size:10px; color:var(--theme-accent,#cfe95f); }
+
+          /* ── Itin score pill — count only, tap for details ── */
+          .itin-pill{
+            display:inline-flex;align-items:center;gap:5px;
+            background:#fff;
+            border:2px solid #0a0a0a;
+            border-radius:999px;padding:6px 12px;
+            font-size:12px;font-weight:800;
+            color:#0a0a0a;
+            cursor:pointer;
+            transition:background .15s,transform .1s;
+            user-select:none;
+          }
+          .itin-pill:hover{background:#f3f3ea;}
+          .itin-pill:active{transform:scale(.94);}
+          .itin-pill i{font-size:10px;color:#0a0a0a;opacity:.75;}
 
           .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
-          .bio-text{font-size:15px;line-height:1.7;color:#2e2e28;text-align:center;margin-bottom:20px;font-weight:400;}
+          .bio-text{font-size:15px;line-height:1.7;color:#2e2e28;text-align:center;margin-bottom:24px;font-weight:400;}
 
           .soc-row{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
-          .soc-btn{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:17px;background:#fff;border:1.5px solid #e5e5da;transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;position:relative;}
-          .soc-btn:hover{transform:translateY(-3px) scale(1.05);}
+          .soc-btn{
+            width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+            font-size:17px;background:#fff;border:1.5px solid #e5e5da;
+            transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;
+            position:relative;
+          }
           .soc-btn:active{transform:scale(.93);}
 
           .links-container{margin-bottom:20px;}
@@ -592,23 +696,36 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-card{background:#fff;border:2px solid #0a0a0a;border-radius:18px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;}
           .sp-trig{display:flex;align-items:center;gap:13px;padding:14px 16px;position:relative;}
           .sp-trig.open{border-bottom:1.5px solid #e5e5da;}
-          .sp-art{width:50px;height:50px;border-radius:10px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:#d7ff3f;flex-shrink:0;}
+          .sp-art{width:50px;height:50px;border-radius:10px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--theme-accent,#cfe95f);flex-shrink:0;}
           .sp-meta{flex:1;min-width:0;}
           .sp-eye{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8a7c;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
           .sp-dot{display:none;}
           .sp-title{font-size:14px;font-weight:700;color:#0a0a0a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
           .sp-artist{font-size:11.5px;color:#5c5c50;margin-top:2px;}
           .sp-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-          .sp-play-btn{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#d7ff3f;transition:transform .15s;flex-shrink:0;}
+          .sp-play-btn{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--theme-accent,#cfe95f);transition:transform .15s;flex-shrink:0;}
           .sp-card:hover .sp-play-btn{transform:scale(1.08);}
           .sp-embed{overflow:hidden;background:#fff;padding:10px 10px 0;}
 
           .foot{text-align:center;padding:8px 0 4px;}
           .foot-cta{font-size:12px;color:#8a8a7c;font-weight:700;letter-spacing:.02em;}
 
-          .sfab{position:fixed;top:16px;right:16px;width:46px;height:46px;border-radius:13px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:17px;color:#d7ff3f;cursor:pointer;z-index:80;transition:transform .18s cubic-bezier(.34,1.56,.64,1);}
-          .sfab:hover{transform:translateY(-3px) scale(1.07);}
+          /* ── Share FAB — Apple-style: transparent glass, minimal, outlined icon ── */
+          .sfab{
+            position:fixed;top:16px;right:16px;width:44px;height:44px;border-radius:50%;
+            background:rgba(255,255,255,.5);
+            -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+            border:1.5px solid rgba(10,10,10,.12);
+            display:flex;align-items:center;justify-content:center;
+            font-size:16px;color:#0a0a0a;cursor:pointer;z-index:80;
+            transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s;
+            box-shadow:0 2px 10px rgba(10,10,10,.06);
+          }
+          .sfab:hover{transform:translateY(-2px) scale(1.05);background:rgba(255,255,255,.78);}
           .sfab:active{transform:scale(.93);}
+
+          /* ── Duo badge — fixed in place, bottom-left, always visible while scrolling ── */
+          .duo-fixed{position:fixed;left:16px;bottom:16px;z-index:80;}
 
           @media(max-width:420px){
             .hero{height:48vh;}
@@ -630,12 +747,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       {/* ── Theme background overlay ── */}
       <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.6,pointerEvents:"none"}}/>
 
-      {/* ── Share FAB ── */}
-      <button className="sfab" onClick={()=>{
+      {/* ── Share FAB (Apple-style) ── */}
+      <button className={`sfab${reveal("s-fab")}`} onClick={()=>{
         setShareOpen(true);
         track(user.username,"share");
       }} aria-label="Share">
-        <i className="fas fa-share-nodes"/>
+        <i className="fas fa-arrow-up-from-bracket"/>
       </button>
 
       {/* ── HERO ── */}
@@ -656,7 +773,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       )}
 
       {/* ── Identity ── */}
-      <div className="id-block s1">
+      <div className={`id-block${reveal("s1")}`}>
         <h1 className="pname">{user.name}</h1>
         <div className="badge-row">
           {/* Age pill — click to toggle between age and birthday */}
@@ -679,29 +796,24 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               {badgeLabel}
             </span>
           )}
+          {/* Itin score — compact, tap for tier breakdown */}
+          <CompactItinBadge username={user.username} />
         </div>
       </div>
 
       {/* ── CONTENT ── */}
       <div className="content">
 
-        {bio && <p className="bio-text s2">{bio}</p>}
-        {/* theme accent underline */}
-        <div style={{width:40,height:2,borderRadius:2,background:theme.accent,margin:"-10px auto 20px",opacity:.6}}/>
-
-        {/* ── Duo badge + Itin Score badge (click Duo badge for full modal) ── */}
-        <div className="s3" style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
-          <ItinScoreBadge username={user.username} />
-          {duo && <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />}
-        </div>
+        {bio && <p className={`bio-text${reveal("s2")}`}>{bio}</p>}
 
         {socials.length > 0 && (
-          <div className="soc-row s3">
+          <div className={`soc-row${reveal("s3")}`}>
             {socials.map(([pl,val])=>{
               const m=PLAT[pl];
               return(
                 <a key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className="soc-btn" title={m.n} aria-label={m.n} style={{color:m.c}}>
+                  className="soc-btn" title={m.n} aria-label={m.n}
+                  style={{color:m.c, boxShadow:`0 0 0 1px ${m.c}26, 0 4px 14px ${m.c}30`}}>
                   <i className={m.i}/>
                 </a>
               );
@@ -710,7 +822,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {(user.links||[]).length > 0 && (
-          <div className="links-container s4">
+          <div className={`links-container${reveal("s4")}`}>
             <div className="links">
               {user.links.map((lnk,i)=>(
                 <a key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
@@ -735,7 +847,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {user.favSongTrackId && (
-          <div className="sp-block s5">
+          <div className={`sp-block${reveal("s5")}`}>
             <div className="sp-card">
               <div className={`sp-trig${spOpen?" open":""}`}
                 onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
@@ -766,11 +878,18 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           </div>
         )}
 
-        <div className="foot s7">
+        <div className={`foot${reveal("s7")}`}>
           <a href="/" className="foot-cta">Create your own profile — it's free</a>
         </div>
 
       </div>
+
+      {/* ── Duo badge — fixed position, doesn't move with content ── */}
+      {duo && (
+        <div className={`duo-fixed${reveal("s-fab")}`}>
+          <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
+        </div>
+      )}
 
       {shareOpen&&<ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
     </>
