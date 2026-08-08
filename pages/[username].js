@@ -511,15 +511,16 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,rgba(215,255,63,.55) 0%,rgba(215,255,63,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(1.1) contrast(1.06) saturate(1.1);}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
               to bottom,
               rgba(250,250,247,0) 0%,
-              rgba(250,250,247,0) 55%,
-              rgba(250,250,247,.55) 78%,
-              rgba(250,250,247,.92) 92%,
+              rgba(250,250,247,.06) 45%,
+              rgba(250,250,247,.28) 65%,
+              rgba(250,250,247,.68) 82%,
+              rgba(250,250,247,.95) 94%,
               rgba(250,250,247,1) 100%
             );
           }
@@ -569,7 +570,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .badge-pill i{ font-size:10px; color:#d7ff3f; }
 
           .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
-          .bio-text{font-size:15px;line-height:1.7;color:#4a4a42;text-align:center;margin-bottom:20px;font-weight:400;}
+          .bio-text{font-size:15px;line-height:1.7;color:#2e2e28;text-align:center;margin-bottom:20px;font-weight:400;}
 
           .soc-row{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
           .soc-btn{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:17px;background:#fff;border:1.5px solid #e5e5da;transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;position:relative;}
@@ -596,7 +597,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-eye{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8a7c;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
           .sp-dot{display:none;}
           .sp-title{font-size:14px;font-weight:700;color:#0a0a0a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
-          .sp-artist{font-size:11.5px;color:#8a8a7c;margin-top:2px;}
+          .sp-artist{font-size:11.5px;color:#5c5c50;margin-top:2px;}
           .sp-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
           .sp-play-btn{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#d7ff3f;transition:transform .15s;flex-shrink:0;}
           .sp-card:hover .sp-play-btn{transform:scale(1.08);}
