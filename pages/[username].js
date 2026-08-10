@@ -713,12 +713,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <span className={reveal("bp")} style={{animationDelay:".12s"}}>
             <ItinScoreBadge username={user.username} />
           </span>
-          {/* Dynamic Duo — sits in the same line as everything else now */}
-          {duo && (
-            <span className={reveal("bp")} style={{animationDelay:".18s"}}>
-              <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-            </span>
-          )}
         </div>
       </div>
 
@@ -727,13 +721,21 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
         {bio && <p className={`bio-text${reveal("s2")}`}>{bio}</p>}
 
+        {/* Dynamic Duo — advanced card, above the social row, always visible */}
+        {duo && (
+          <div className={reveal("s3")}>
+            <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
+          </div>
+        )}
+
         {socials.length > 0 && (
-          <div className={`soc-row${reveal("s3")}`}>
+          <div className={`soc-row${reveal("s4")}`}>
             {socials.map(([pl,val])=>{
               const m=PLAT[pl];
               return(
                 <a key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className="soc-btn" title={m.n} aria-label={m.n} style={{color:m.c}}>
+                  className="soc-btn" title={m.n} aria-label={m.n} style={{color:m.c}}
+                  onClick={()=>track(user.username, `social_${pl}`)}>
                   <i className={m.i}/>
                 </a>
               );
@@ -742,7 +744,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {(user.links||[]).length > 0 && (
-          <div className={`links-container${reveal("s4")}`}>
+          <div className={`links-container${reveal("s5")}`}>
             <div className="links">
               {user.links.map((lnk,i)=>(
                 <a key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
@@ -767,7 +769,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {user.favSongTrackId && (
-          <div className={`sp-block${reveal("s5")}`}>
+          <div className={`sp-block${reveal("s6")}`}>
             <div className="sp-card">
               <div className={`sp-trig${spOpen?" open":""}`}
                 onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
