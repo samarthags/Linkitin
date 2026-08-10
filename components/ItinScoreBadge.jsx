@@ -17,11 +17,10 @@ const BLACK = "#0a0a0a";
 const CREAM = "#fafaf7";
 
 const TIERS = [
-  { min: 0,    label: "New"      },
-  { min: 100,  label: "Bronze"   },
-  { min: 500,  label: "Silver"   },
-  { min: 1500, label: "Gold"     },
-  { min: 5000, label: "Platinum" },
+  { min: 0,     label: "Bronze"   },
+  { min: 1000,  label: "Silver"   },
+  { min: 5000,  label: "Gold"     },
+  { min: 10000, label: "Platinum" },
 ];
 
 function tierFor(score) {
@@ -104,25 +103,20 @@ export default function ItinScoreBadge({ username }) {
           Itin Score
         </div>
 
-        <div style={{ textAlign: "center", margin: "2px 0 4px", animation: "itinCountIn .3s .05s both" }}>
+        <div style={{ textAlign: "center", margin: "2px 0 10px", animation: "itinCountIn .3s .05s both" }}>
           <span style={{ fontSize: 40, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{score}</span>
         </div>
-        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: "#8a8a80", marginBottom: 16 }}>
-          Current tier: <span style={{ color: BLACK }}>{tier.label}</span>
+
+        <div style={{ textAlign: "center", fontSize: 14, lineHeight: 1.6, color: "#2e2e28", marginBottom: 14 }}>
+          <strong>{username}</strong> has an Itin Score of <strong>{score}</strong>, ranked{" "}
+          <span style={{
+            display: "inline-block", background: BLACK, color: LIME, borderRadius: 6,
+            padding: "1px 9px", fontWeight: 800, fontSize: 12.5, letterSpacing: ".02em",
+          }}>{tier.label}</span>.
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {TIERS.map(t => (
-            <div key={t.label} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              fontSize: 12, padding: "8px 12px", borderRadius: 10, fontWeight: 700,
-              background: t.label === tier.label ? BLACK : "#f3f3ea",
-              color: t.label === tier.label ? LIME : BLACK,
-            }}>
-              <span>{t.label}</span>
-              <span style={{ opacity: .65 }}>{t.min}+</span>
-            </div>
-          ))}
+        <div style={{ textAlign: "center", fontSize: 11.5, color: "#8a8a80", lineHeight: 1.6 }}>
+          The Itin Score goes up whenever anyone interacts with this profile — a view, a share, or a click on any link or social icon.
         </div>
       </div>
     </div>
