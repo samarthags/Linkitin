@@ -1,20 +1,15 @@
 // components/ItinScoreBadge.jsx
 // Standalone badge — NOT linked to Duo at all. Shows a user's Itin Score,
-// which goes up +10 per unique profile view (see pages/api/track.js).
-// Compact pill: icon + number only. Tap it for a full tier readout —
-// tiers are derived purely from the score number, no extra DB field needed.
-//
-// Rendered via a React Portal into document.body — same reason DuoBadge
-// does this: `position:fixed` gets silently trapped by any ancestor with a
-// completed CSS `transform` (e.g. a slide-up entrance animation that ends
-// at translateY(0) still counts). Portal-ing avoids that so the modal
-// always covers the true viewport no matter where this badge is mounted.
+// which goes up +10 per interaction (see pages/api/track.js).
+// The badge's whole look — trigger pill AND modal accent — changes per
+// rank, so a Platinum profile visibly reads as more "advanced" than a
+// fresh Bronze one at a glance.
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const LIME  = "#d7ff3f";
 const BLACK = "#0a0a0a";
 const CREAM = "#fafaf7";
+const LIME  = "#d7ff3f";
 
 const TIERS = [
   { min: 0,     label: "Bronze"   },
@@ -22,6 +17,15 @@ const TIERS = [
   { min: 5000,  label: "Gold"     },
   { min: 10000, label: "Platinum" },
 ];
+
+// Per-rank visual theme. Higher rank = richer surface + a soft glow;
+// Gold and Platinum also get an animated shimmer sweep.
+const TIER_STYLE = {
+  Bronze:   { bg: "#fff",                                              border: BLACK,     text: BLACK, glow: "none",                            shimmer: false },
+  Silver:   { bg: "linear-gradient(135deg,#f6f6f9,#cfd1da 55%,#f0f0f4)", border: "#9a9aa6", text: BLACK, glow: "0 0 12px rgba(150,150,165,.35)",  shimmer: false },
+  Gold:     { bg: "linear-gradient(135deg,#fff2c9,#e7b423 60%,#fff2c9)", border: "#b4870f", text: "#4a3300", glow: "0 0 16px rgba(231,180,35,.45)", shimmer: true  },
+  Platinum: { bg: "linear-gradient(135deg,#0a0a0a,#233b2e 45%,#0a0a0a)", border: BLACK,     text: LIME,  glow: "0 0 18px rgba(215,255,63,.5)",     shimmer: true  },
+};
 
 function tierFor(score) {
   let t = TIERS[0];
@@ -33,6 +37,8 @@ const KEYFRAMES = `
 @keyframes itinBackdropIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes itinCardIn { from { opacity: 0; transform: scale(.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes itinCountIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes itinShimmer { 0% { transform: translateX(-130%) skewX(-12deg); } 100% { transform: translateX(230%) skewX(-12deg); } }
+@keyframes itinGlowPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 `;
 
 export default function ItinScoreBadge({ username }) {
@@ -63,7 +69,8 @@ export default function ItinScoreBadge({ username }) {
   }, [open]);
 
   if (score == null) return null;
-  const tier = tierFor(score);
+  const tier  = tierFor(score);
+  const style = TIER_STYLE[tier.label];
 
   const modal = (
     <div
@@ -75,7 +82,6 @@ export default function ItinScoreBadge({ username }) {
         animation: "itinBackdropIn .18s ease both",
       }}
     >
-      <style>{KEYFRAMES}</style>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -96,9 +102,10 @@ export default function ItinScoreBadge({ username }) {
         >×</button>
 
         <div style={{
-          display: "inline-block", background: BLACK, color: LIME, borderRadius: 999,
-          padding: "3px 10px", fontSize: 9, fontWeight: 800, letterSpacing: ".08em",
-          textTransform: "uppercase", marginBottom: 14,
+          display: "inline-block", background: style.bg, color: style.text,
+          border: `1.5px solid ${style.border}`, boxShadow: style.glow,
+          borderRadius: 999, padding: "3px 10px", fontSize: 9, fontWeight: 800,
+          letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 14,
         }}>
           Itin Score
         </div>
@@ -110,9 +117,20 @@ export default function ItinScoreBadge({ username }) {
         <div style={{ textAlign: "center", fontSize: 14, lineHeight: 1.6, color: "#2e2e28", marginBottom: 14 }}>
           <strong>{username}</strong> has an Itin Score of <strong>{score}</strong>, ranked{" "}
           <span style={{
-            display: "inline-block", background: BLACK, color: LIME, borderRadius: 6,
-            padding: "1px 9px", fontWeight: 800, fontSize: 12.5, letterSpacing: ".02em",
-          }}>{tier.label}</span>.
+            position: "relative", display: "inline-block", overflow: "hidden",
+            background: style.bg, color: style.text, border: `1.5px solid ${style.border}`,
+            boxShadow: style.glow, borderRadius: 6, padding: "1px 9px",
+            fontWeight: 800, fontSize: 12.5, letterSpacing: ".02em",
+          }}>
+            {tier.label}
+            {style.shimmer && (
+              <span style={{
+                position: "absolute", top: 0, left: 0, width: "40%", height: "100%",
+                background: "linear-gradient(115deg,transparent,rgba(255,255,255,.65),transparent)",
+                animation: "itinShimmer 2.4s ease-in-out infinite",
+              }}/>
+            )}
+          </span>.
         </div>
 
         <div style={{ textAlign: "center", fontSize: 11.5, color: "#8a8a80", lineHeight: 1.6 }}>
@@ -124,23 +142,33 @@ export default function ItinScoreBadge({ username }) {
 
   return (
     <>
+      <style>{KEYFRAMES}</style>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Itin Score ${score}`}
-        title="Itin Score"
+        aria-label={`Itin Score ${score}, ${tier.label} rank`}
+        title={`Itin Score — ${tier.label}`}
         style={{
+          position: "relative", overflow: "hidden",
           display: "inline-flex", alignItems: "center", gap: 5,
-          background: "#fff", color: BLACK, border: `2px solid ${BLACK}`,
-          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
-          fontFamily: "'Sora', sans-serif", cursor: "pointer",
-          WebkitTapHighlightColor: "transparent", transition: "background .15s, transform .1s",
+          background: style.bg, color: style.text, border: `2px solid ${style.border}`,
+          boxShadow: style.glow, borderRadius: 999, padding: "6px 13px",
+          fontSize: 12, fontWeight: 800, fontFamily: "'Sora', sans-serif", cursor: "pointer",
+          WebkitTapHighlightColor: "transparent", transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .25s",
+          animation: style.shimmer ? "itinGlowPulse 2.6s ease-in-out infinite" : "none",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#f3f3ea"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        <i className="fas fa-bolt" style={{ fontSize: 10, opacity: .75 }}/>
+        <i className="fas fa-bolt" style={{ fontSize: 10, opacity: .8 }}/>
         {score}
+        {style.shimmer && (
+          <span style={{
+            position: "absolute", top: 0, left: 0, width: "35%", height: "100%",
+            background: "linear-gradient(115deg,transparent,rgba(255,255,255,.6),transparent)",
+            animation: "itinShimmer 2.8s ease-in-out infinite",
+          }}/>
+        )}
       </button>
 
       {open && mounted && createPortal(modal, document.body)}
