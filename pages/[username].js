@@ -495,7 +495,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
           .themed-bg{background:var(--theme-hero,#fafaf7);min-height:100vh;}
           .soc-btn:hover{transform:translateY(-3px) scale(1.06);box-shadow:0 6px 16px rgba(10,10,10,.08);border-color:#0a0a0a;}
-          .lbtn:hover{border-color:#0a0a0a!important;box-shadow:0 4px 14px rgba(10,10,10,.08)!important;}
           .foot-cta:hover{color:#0a0a0a!important;}
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
@@ -556,7 +555,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             font-size:12px;font-weight:800;
             color:#0a0a0a;
             cursor:pointer;
-            transition:background .15s,transform .1s;
+            transition:background .25s cubic-bezier(.16,1,.3,1),transform .22s cubic-bezier(.34,1.56,.64,1);
             user-select:none;
           }
           .age-pill:hover{background:#f3f3ea;}
@@ -597,8 +596,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           .links-container{margin-bottom:20px;}
           .links{display:flex;flex-direction:column;gap:10px;}
-          .lbtn{display:flex;align-items:center;width:100%;padding:12px 14px;background:#fff;border:2px solid #0a0a0a;border-radius:16px;cursor:pointer;transition:background .14s,box-shadow .14s;}
-          .lbtn:hover{background:#f8fbe8;}
+          .lbtn{
+            display:flex;align-items:center;width:100%;padding:13px 15px;
+            background:#fff;border:1.5px solid rgba(10,10,10,.10);border-radius:18px;
+            cursor:pointer;box-shadow:0 1px 3px rgba(10,10,10,.045);
+            transition:transform .32s cubic-bezier(.16,1,.3,1),box-shadow .32s cubic-bezier(.16,1,.3,1),border-color .22s,background .22s;
+          }
+          .lbtn:hover{background:#f8fbe8;border-color:rgba(10,10,10,.26);box-shadow:0 12px 28px rgba(10,10,10,.10);transform:translateY(-3px);}
+          .lbtn:active{transform:translateY(-1px) scale(.99);}
           .lbtn:active{background:#f0f0e5;}
           .lbtn-ic-wrap{width:50px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
           .lbtn-ic{width:50px;height:50px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;color:#0a0a0a;background:#f3f3ea;border:1.5px solid #e5e5da;flex-shrink:0;}
@@ -607,7 +612,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .lbtn:hover .lbtn-a{opacity:.7;transform:translateX(2px);}
 
           .sp-block{margin-bottom:20px;}
-          .sp-card{background:#fff;border:2px solid #0a0a0a;border-radius:18px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;}
+          .sp-card{background:#fff;border:1.5px solid rgba(10,10,10,.10);border-radius:20px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(10,10,10,.045);transition:box-shadow .32s cubic-bezier(.16,1,.3,1),transform .32s cubic-bezier(.16,1,.3,1);}
+          .sp-card:hover{box-shadow:0 12px 28px rgba(10,10,10,.10);transform:translateY(-2px);}
           .sp-trig{display:flex;align-items:center;gap:13px;padding:14px 16px;position:relative;}
           .sp-trig.open{border-bottom:1.5px solid #e5e5da;}
           .sp-art{width:50px;height:50px;border-radius:10px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--theme-accent,#cfe95f);flex-shrink:0;}
@@ -661,11 +667,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           /* ── Desktop ── */
           @media(min-width:900px){
-            .hero{height:58vh;max-height:520px;}
+            .hero{height:58vh;max-height:520px;border-radius:0 0 44px 44px;box-shadow:0 24px 60px rgba(10,10,10,.10);}
             .content{max-width:640px;padding:26px 24px 96px;}
             .pname{font-size:clamp(38px,5vw,56px);}
-            .lbtn:hover{transform:translateY(-2px);}
-            .lbtn{transition:background .14s,box-shadow .14s,transform .14s;}
+            .lbtn:hover{transform:translateY(-3px);}
+            .lbtn{transition:background .22s,box-shadow .32s cubic-bezier(.16,1,.3,1),transform .32s cubic-bezier(.16,1,.3,1),border-color .22s;}
             .soc-btn:hover{transform:translateY(-4px) scale(1.08);}
           }
         `}</style>
@@ -674,8 +680,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       {/* ── LOADING SPLASH ── */}
       <LoadingScreen visible={loading} />
 
-      {/* ── Theme background overlay ── */}
+      {/* ── Theme background overlay + subtle dot-grid texture for depth ── */}
       <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.6,pointerEvents:"none"}}/>
+      <div style={{
+        position:"fixed",inset:0,zIndex:-1,pointerEvents:"none",
+        backgroundImage:"radial-gradient(rgba(10,10,10,.05) 1px, transparent 1px)",
+        backgroundSize:"22px 22px",
+      }}/>
 
       {/* ── Share FAB (Apple-style) ── */}
       <button className={`sfab${reveal("s-fab")}`} onClick={()=>{
