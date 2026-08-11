@@ -514,29 +514,35 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes scrollWheel{0%{transform:translateY(0);opacity:1;}70%{opacity:0;}100%{transform:translateY(14px);opacity:0;}}
           @keyframes scrollHintIn{from{opacity:0;transform:translate(-50%,8px);}to{opacity:1;transform:translate(-50%,0);}}
           .scroll-hint{
-            position:absolute;left:50%;bottom:18px;z-index:2;
-            width:26px;height:42px;border-radius:14px;
-            border:2px solid rgba(10,10,10,.55);
-            display:flex;justify-content:center;padding-top:7px;
+            position:absolute;left:50%;bottom:6px;z-index:2;
+            display:flex;flex-direction:column;align-items:center;gap:6px;
             animation:scrollHintIn .6s 1.3s cubic-bezier(.16,1,.3,1) both;
             transition:opacity .35s ease;
             pointer-events:none;
           }
+          .scroll-hint-mouse{
+            width:24px;height:38px;border-radius:13px;
+            background:rgba(255,255,255,.35);
+            -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+            border:1.5px solid rgba(10,10,10,.4);
+            box-shadow:0 2px 8px rgba(10,10,10,.12);
+            display:flex;justify-content:center;padding-top:6px;
+          }
           .scroll-hint span{
-            width:4px;height:8px;border-radius:2px;background:rgba(10,10,10,.6);
+            width:3.5px;height:7px;border-radius:2px;background:rgba(10,10,10,.65);
             animation:scrollWheel 1.6s ease-in-out infinite;
           }
           @keyframes blurReveal{from{opacity:0;filter:blur(10px);transform:translateY(14px);}to{opacity:1;filter:blur(0);transform:translateY(0);}}
           .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
-          .blur-in{animation:blurReveal 1.05s cubic-bezier(.16,1,.3,1) both;}
+          .blur-in{animation:blurReveal .7s cubic-bezier(.16,1,.3,1) both;}
 
-          .s1{animation:slideUp .95s .04s cubic-bezier(.16,1,.3,1) both;}
-          .s2{animation:slideUp .95s .16s cubic-bezier(.16,1,.3,1) both;}
-          .s3{animation:slideUp .95s .28s cubic-bezier(.16,1,.3,1) both;}
-          .s4{animation:slideUp .95s .40s cubic-bezier(.16,1,.3,1) both;}
-          .s5{animation:slideUp .95s .52s cubic-bezier(.16,1,.3,1) both;}
-          .s6{animation:slideUp .95s .64s cubic-bezier(.16,1,.3,1) both;}
-          .s7{animation:slideUp .95s .76s cubic-bezier(.16,1,.3,1) both;}
+          .s1{animation:slideUp .58s .04s cubic-bezier(.16,1,.3,1) both;}
+          .s2{animation:slideUp .58s .16s cubic-bezier(.16,1,.3,1) both;}
+          .s3{animation:slideUp .58s .28s cubic-bezier(.16,1,.3,1) both;}
+          .s4{animation:slideUp .58s .40s cubic-bezier(.16,1,.3,1) both;}
+          .s5{animation:slideUp .58s .52s cubic-bezier(.16,1,.3,1) both;}
+          .s6{animation:slideUp .58s .64s cubic-bezier(.16,1,.3,1) both;}
+          .s7{animation:slideUp .58s .76s cubic-bezier(.16,1,.3,1) both;}
           .s-fab{animation:popIn .5s .3s cubic-bezier(.34,1.56,.64,1) both;}
 
           .hero{position:relative;width:100%;height:52vh;min-height:280px;max-height:440px;overflow:hidden;animation:fadeIn .8s ease both;background:#fafaf7;}
@@ -545,7 +551,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:none;animation:heroZoom 6s ease-out both;}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(.92);animation:heroZoom 6s ease-out both;}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
@@ -567,7 +573,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           }
           .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
 
-          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:6px;}
+          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:20px;}
           .pname{font-size:clamp(30px,8.5vw,50px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;color:#0a0a0a;letter-spacing:-.01em;line-height:1.02;margin-bottom:10px;text-transform:uppercase;}
           .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
 
@@ -672,7 +678,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           @media(max-width:420px){
             .hero{height:48vh;}
-            .id-block{margin-top:2px;}
+            .id-block{margin-top:14px;}
             .pname{font-size:26px;}
             .content{padding:10px 14px 56px;}
             .lbtn{min-height:54px;border-radius:14px;}
@@ -734,7 +740,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <div className="hero-fade"/>
           {!loading && (
             <div className="scroll-hint" style={{opacity: scrolled ? 0 : 1}}>
-              <span/>
+              <div className="scroll-hint-mouse"><span/></div>
             </div>
           )}
         </div>
