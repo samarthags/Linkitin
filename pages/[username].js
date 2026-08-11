@@ -503,7 +503,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
           @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
           @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
+          @keyframes blurReveal{from{opacity:0;filter:blur(10px);transform:translateY(14px);}to{opacity:1;filter:blur(0);transform:translateY(0);}}
           .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
+          .blur-in{animation:blurReveal .78s cubic-bezier(.16,1,.3,1) both;}
 
           .s1{animation:slideUp .62s .02s cubic-bezier(.16,1,.3,1) both;}
           .s2{animation:slideUp .62s .10s cubic-bezier(.16,1,.3,1) both;}
@@ -715,7 +717,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
       {/* ── Identity ── */}
       <div className={`id-block${reveal("s1")}`}>
-        <h1 className="pname">{user.name}</h1>
+        <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
         <div className="badge-row">
           {/* Age pill — click to toggle between age and birthday */}
           {userAge && user.dob && (
@@ -759,7 +761,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       {/* ── CONTENT ── */}
       <div className="content">
 
-        {bio && <p className={`bio-text${reveal("s2")}`}>{bio}</p>}
+        {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".08s"}}>{bio}</p>}
 
         {socials.length > 0 && (
           <div className={`soc-row${reveal("s3")}`}>
