@@ -180,7 +180,7 @@ function ShareSheet({ url, name, onClose }) {
   }
 
   const opts = [
-    {l:"Copy Link", ic:"fas fa-copy",          bg:"#0a0a0a",fg:"#d7ff3f",fn:doCopy},
+    {l:"Copy Link", ic:"fas fa-copy",          bg:"#0a0a0a",fg:"#FF6A3D",fn:doCopy},
     {l:"WhatsApp",  ic:"fab fa-whatsapp",       bg:"#f2fdf5",fg:"#25D366",fn:()=>window.open(`https://wa.me/?text=${enc("Visit "+name+"'s Profile: "+url)}`)},
     {l:"Instagram", ic:"fab fa-instagram",      bg:"#fef2f5",fg:"#E4405F",fn:()=>window.open(`https://www.instagram.com/?url=${enc(url)}`)},
     {l:"Snapchat",  ic:"fab fa-snapchat",       bg:"#fffce8",fg:"#c9a800",fn:()=>window.open(`https://www.snapchat.com/scan?attachmentUrl=${enc(url)}`)},
@@ -213,7 +213,7 @@ function ShareSheet({ url, name, onClose }) {
               onMouseEnter={e=>e.currentTarget.style.background="#f0f0e8"}
               onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <div style={{width:52,height:52,borderRadius:14,background:o.bg,color:o.fg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:o.l==="Copy Link"?"none":"1.5px solid rgba(10,10,10,.08)"}}>
-                {o.l==="Copy Link"&&copied?<i className="fas fa-check" style={{color:"#d7ff3f"}}/>:<i className={o.ic}/>}
+                {o.l==="Copy Link"&&copied?<i className="fas fa-check" style={{color:"#FF6A3D"}}/>:<i className={o.ic}/>}
               </div>
               <span style={{fontSize:10.5,fontWeight:700,color:"#0a0a0a",textAlign:"center",lineHeight:1.2}}>{o.l==="Copy Link"&&copied?"Copied!":o.l}</span>
             </button>
@@ -246,7 +246,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   }, [user?.username]);
 
   /* ── Fixed light theme — TeenStore-inspired: cream bg, black text, muted lime accent ── */
-  const theme = { accent:"#cfe95f", glow:"rgba(207,233,95,.22)", hero:"#fafaf7", badge:"#0a0a0a" };
+  const theme = { accent:"#FF6A3D", glow:"rgba(255,106,61,.20)", hero:"#fafaf7", badge:"#0a0a0a" };
 
   useEffect(()=>{
     if (!user) { setLoading(false); return; }
@@ -387,12 +387,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <style>{`*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Sora',sans-serif;background:#fafaf7;color:#0a0a0a;min-height:100vh;display:flex;align-items:center;justify-content:center;}`}</style>
         </Head>
         <div style={{textAlign:"center",padding:32}}>
-          <div style={{width:80,height:80,borderRadius:"50%",background:"#0a0a0a",border:"none",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:32,color:"#d7ff3f"}}>
+          <div style={{width:80,height:80,borderRadius:"50%",background:"#0a0a0a",border:"none",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:32,color:"#FF6A3D"}}>
             <i className="fas fa-user-slash"/>
           </div>
           <h1 style={{fontSize:22,fontWeight:900,marginBottom:8,color:"#0a0a0a",textTransform:"uppercase"}}>Profile Not Found</h1>
           <p style={{color:"#6b6b60",marginBottom:28}}>This username doesn't exist yet.</p>
-          <a href="/create" style={{background:"#0a0a0a",color:"#d7ff3f",padding:"14px 30px",borderRadius:14,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,outline:"none",WebkitTapHighlightColor:"transparent",textTransform:"uppercase",letterSpacing:".03em"}}>
+          <a href="/create" style={{background:"#0a0a0a",color:"#FF6A3D",padding:"14px 30px",borderRadius:14,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,outline:"none",WebkitTapHighlightColor:"transparent",textTransform:"uppercase",letterSpacing:".03em"}}>
             <i className="fas fa-plus"/> Create Your Profile
           </a>
           <div style={{marginTop:40,fontSize:12,color:"#b0b0a0",fontWeight:600}}>
@@ -498,7 +498,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .foot-cta:hover{color:#0a0a0a!important;}
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-          @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+          @keyframes slideUp{from{opacity:0;transform:translateY(34px);}to{opacity:1;transform:translateY(0);}}
           @keyframes popIn{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
           @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
           @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
@@ -507,13 +507,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
           .blur-in{animation:blurReveal .78s cubic-bezier(.16,1,.3,1) both;}
 
-          .s1{animation:slideUp .62s .02s cubic-bezier(.16,1,.3,1) both;}
-          .s2{animation:slideUp .62s .10s cubic-bezier(.16,1,.3,1) both;}
-          .s3{animation:slideUp .62s .18s cubic-bezier(.16,1,.3,1) both;}
-          .s4{animation:slideUp .62s .26s cubic-bezier(.16,1,.3,1) both;}
-          .s5{animation:slideUp .62s .34s cubic-bezier(.16,1,.3,1) both;}
-          .s6{animation:slideUp .62s .42s cubic-bezier(.16,1,.3,1) both;}
-          .s7{animation:slideUp .62s .50s cubic-bezier(.16,1,.3,1) both;}
+          .s1{animation:slideUp .74s .02s cubic-bezier(.16,1,.3,1) both;}
+          .s2{animation:slideUp .74s .10s cubic-bezier(.16,1,.3,1) both;}
+          .s3{animation:slideUp .74s .18s cubic-bezier(.16,1,.3,1) both;}
+          .s4{animation:slideUp .74s .26s cubic-bezier(.16,1,.3,1) both;}
+          .s5{animation:slideUp .74s .34s cubic-bezier(.16,1,.3,1) both;}
+          .s6{animation:slideUp .74s .42s cubic-bezier(.16,1,.3,1) both;}
+          .s7{animation:slideUp .74s .50s cubic-bezier(.16,1,.3,1) both;}
           .s-fab{animation:popIn .5s .3s cubic-bezier(.34,1.56,.64,1) both;}
 
           .hero{position:relative;width:100%;height:52vh;min-height:280px;max-height:440px;overflow:hidden;animation:fadeIn .8s ease both;background:#fafaf7;}
@@ -542,7 +542,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;
           }
-          .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
+          .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#FF6A3D;position:relative;z-index:1;}
 
           .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:-56px;}
           .pname{font-size:clamp(30px,8.5vw,50px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;color:#0a0a0a;letter-spacing:-.01em;line-height:1.02;margin-bottom:10px;text-transform:uppercase;}
@@ -572,13 +572,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             border-radius:999px;
             padding:6px 14px 6px 11px;
             font-size:12px;font-weight:800;
-            color:var(--theme-accent,#cfe95f);
+            color:var(--theme-accent,#FF6A3D);
             letter-spacing:.04em;
             text-transform:uppercase;
             cursor:default;
             -webkit-tap-highlight-color:transparent;
           }
-          .badge-pill i{ font-size:10px; color:var(--theme-accent,#cfe95f); }
+          .badge-pill i{ font-size:10px; color:var(--theme-accent,#FF6A3D); }
 
           /* ── Badge row items pop in one after another, staggered by inline delay ── */
           @keyframes badgePop{from{opacity:0;transform:translateY(6px) scale(.9);}to{opacity:1;transform:translateY(0) scale(1);}}
@@ -618,14 +618,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .sp-card:hover{box-shadow:0 12px 28px rgba(10,10,10,.10);transform:translateY(-2px);}
           .sp-trig{display:flex;align-items:center;gap:13px;padding:14px 16px;position:relative;}
           .sp-trig.open{border-bottom:1.5px solid #e5e5da;}
-          .sp-art{width:50px;height:50px;border-radius:10px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--theme-accent,#cfe95f);flex-shrink:0;}
+          .sp-art{width:50px;height:50px;border-radius:10px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--theme-accent,#FF6A3D);flex-shrink:0;}
           .sp-meta{flex:1;min-width:0;}
           .sp-eye{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8a7c;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
           .sp-dot{display:none;}
           .sp-title{font-size:14px;font-weight:700;color:#0a0a0a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
           .sp-artist{font-size:11.5px;color:#5c5c50;margin-top:2px;}
           .sp-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-          .sp-play-btn{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--theme-accent,#cfe95f);transition:transform .15s;flex-shrink:0;}
+          .sp-play-btn{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--theme-accent,#FF6A3D);transition:transform .15s;flex-shrink:0;}
           .sp-card:hover .sp-play-btn{transform:scale(1.08);}
           .sp-embed{overflow:hidden;background:#fff;padding:10px 10px 0;}
 
@@ -744,16 +744,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               </span>
             </span>
           )}
-          {/* Itin score — compact, tap for full tier breakdown. Works for any
-              profile: it fetches live by user.username, nothing hardcoded. */}
-          <span className={reveal("bp")} style={{animationDelay:".12s"}}>
-            <ItinScoreBadge username={user.username} />
-          </span>
+          {/* Itin score — compact, tap for full tier breakdown. Animates itself
+              in the instant its score arrives, so it's never "late". Works
+              for any profile: fetches live by user.username, nothing hardcoded. */}
+          <ItinScoreBadge username={user.username} />
           {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
           {duo && (
-            <span className={reveal("bp")} style={{animationDelay:".18s"}}>
-              <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-            </span>
+            <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
           )}
         </div>
       </div>
