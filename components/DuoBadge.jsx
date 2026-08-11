@@ -1,14 +1,30 @@
 // components/DuoBadge.jsx
 // Compact pill — same pattern as ItinScoreBadge: small trigger, tap opens a
-// portal modal with a simple animated reveal. The two DPs are clickable and
-// jump straight to that partner's profile. Below that: just Level and
-// bonded days — nothing else.
-import { useEffect, useState } from "react";
+// portal modal with an animated reveal. The two DPs are clickable and jump
+// straight to that partner's profile. The badge's look changes by Duo
+// level, same tier language as Itin Score, so a higher-level Duo visibly
+// reads as more advanced.
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const LIME  = "#d7ff3f";
 const BLACK = "#0a0a0a";
 const CREAM = "#fafaf7";
+const LIME  = "#d7ff3f";
+
+// Level -> tier, same visual language as ItinScoreBadge's rank styling.
+const TIER_STYLE = {
+  Bronze:   { bg: "#fff",                                              border: BLACK,     text: BLACK, glow: "none",                            shimmer: false },
+  Silver:   { bg: "linear-gradient(135deg,#f6f6f9,#cfd1da 55%,#f0f0f4)", border: "#9a9aa6", text: BLACK, glow: "0 0 12px rgba(150,150,165,.35)",  shimmer: false },
+  Gold:     { bg: "linear-gradient(135deg,#fff2c9,#e7b423 60%,#fff2c9)", border: "#b4870f", text: "#4a3300", glow: "0 0 16px rgba(231,180,35,.45)", shimmer: true  },
+  Platinum: { bg: "linear-gradient(135deg,#0a0a0a,#233b2e 45%,#0a0a0a)", border: BLACK,     text: LIME,  glow: "0 0 18px rgba(215,255,63,.5)",     shimmer: true  },
+};
+
+function duoTier(level) {
+  if (level >= 8) return "Platinum";
+  if (level >= 5) return "Gold";
+  if (level >= 3) return "Silver";
+  return "Bronze";
+}
 
 function Avatar({ person, z }) {
   const common = {
@@ -42,11 +58,32 @@ function ProfileLink({ username, children }) {
   );
 }
 
+// Counts up from 0 to `target` with an ease-out curve while `active` is true.
+function useCountUp(target, active, duration = 750) {
+  const [val, setVal] = useState(0);
+  const raf = useRef(null);
+  useEffect(() => {
+    if (!active) { setVal(0); return; }
+    const start = performance.now();
+    const step = (t) => {
+      const p = Math.min(1, (t - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(eased * target));
+      if (p < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => raf.current && cancelAnimationFrame(raf.current);
+  }, [target, active, duration]);
+  return val;
+}
+
 const KEYFRAMES = `
 @keyframes duoBackdropIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes duoCardIn { from { opacity: 0; transform: scale(.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes duoAvatarsIn { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
 @keyframes duoNumIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes duoShimmer { 0% { transform: translateX(-130%) skewX(-12deg); } 100% { transform: translateX(230%) skewX(-12deg); } }
+@keyframes duoGlowPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 `;
 
 export default function DuoBadge({ duo }) {
@@ -67,10 +104,15 @@ export default function DuoBadge({ duo }) {
     };
   }, [open]);
 
+  const level       = duo?.level ?? 1;
+  const daysBonded  = duo?.daysBonded ?? 0;
+  const animLevel   = useCountUp(level, open);
+  const animDays    = useCountUp(daysBonded, open);
+
   if (!duo) return null;
 
-  const level      = duo.level ?? 1;
-  const daysBonded = duo.daysBonded ?? 0;
+  const tier  = duoTier(level);
+  const style = TIER_STYLE[tier];
   const meName      = duo.me?.name || duo.me?.username || "You";
   const partnerName = duo.partner?.name || duo.partner?.username || "Partner";
 
@@ -84,7 +126,6 @@ export default function DuoBadge({ duo }) {
         animation: "duoBackdropIn .18s ease both",
       }}
     >
-      <style>{KEYFRAMES}</style>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -105,11 +146,20 @@ export default function DuoBadge({ duo }) {
         >×</button>
 
         <div style={{
-          display: "inline-block", background: BLACK, color: LIME, borderRadius: 999,
+          position: "relative", overflow: "hidden", display: "inline-block",
+          background: style.bg, color: style.text, border: `1.5px solid ${style.border}`,
+          boxShadow: style.glow, borderRadius: 999,
           padding: "3px 10px", fontSize: 9, fontWeight: 800, letterSpacing: ".08em",
           textTransform: "uppercase", marginBottom: 16,
         }}>
-          Dynamic Duo
+          Dynamic Duo · {tier}
+          {style.shimmer && (
+            <span style={{
+              position: "absolute", top: 0, left: 0, width: "40%", height: "100%",
+              background: "linear-gradient(115deg,transparent,rgba(255,255,255,.65),transparent)",
+              animation: "duoShimmer 2.4s ease-in-out infinite",
+            }}/>
+          )}
         </div>
 
         {/* DPs — tap either one to jump straight to that profile */}
@@ -120,11 +170,11 @@ export default function DuoBadge({ duo }) {
 
         <div style={{ display: "flex", justifyContent: "center", gap: 10, animation: "duoNumIn .3s .1s both" }}>
           <div style={{ flex: 1, background: "#f3f3ea", borderRadius: 14, padding: "12px 6px" }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{level}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{animLevel}</div>
             <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8a8a80", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>Level</div>
           </div>
           <div style={{ flex: 1, background: "#f3f3ea", borderRadius: 14, padding: "12px 6px" }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{daysBonded}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{animDays}</div>
             <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8a8a80", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>Day{daysBonded === 1 ? "" : "s"} bonded</div>
           </div>
         </div>
@@ -138,23 +188,33 @@ export default function DuoBadge({ duo }) {
 
   return (
     <>
+      <style>{KEYFRAMES}</style>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Dynamic Duo — Level ${level}`}
-        title="Dynamic Duo"
+        aria-label={`Dynamic Duo — Level ${level}, ${tier} tier`}
+        title={`Dynamic Duo — ${tier}`}
         style={{
+          position: "relative", overflow: "hidden",
           display: "inline-flex", alignItems: "center", gap: 5,
-          background: "#fff", color: BLACK, border: `2px solid ${BLACK}`,
-          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
-          fontFamily: "'Sora', sans-serif", cursor: "pointer",
-          WebkitTapHighlightColor: "transparent", transition: "background .15s, transform .1s",
+          background: style.bg, color: style.text, border: `2px solid ${style.border}`,
+          boxShadow: style.glow, borderRadius: 999, padding: "6px 13px",
+          fontSize: 12, fontWeight: 800, fontFamily: "'Sora', sans-serif", cursor: "pointer",
+          WebkitTapHighlightColor: "transparent", transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .25s",
+          animation: style.shimmer ? "duoGlowPulse 2.6s ease-in-out infinite" : "none",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#f3f3ea"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .75 }}/>
+        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .8 }}/>
         Lvl {level}
+        {style.shimmer && (
+          <span style={{
+            position: "absolute", top: 0, left: 0, width: "35%", height: "100%",
+            background: "linear-gradient(115deg,transparent,rgba(255,255,255,.6),transparent)",
+            animation: "duoShimmer 2.8s ease-in-out infinite",
+          }}/>
+        )}
       </button>
 
       {open && mounted && createPortal(modal, document.body)}
