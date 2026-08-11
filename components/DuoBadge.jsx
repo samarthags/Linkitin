@@ -166,8 +166,8 @@ export default function DuoBadge({ duo }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Dynamic Duo — Level ${level}, ${tier} tier`}
-        title={`Dynamic Duo — ${tier}`}
+        aria-label={`Dynamic Duo — Level ${level}`}
+        title="Dynamic Duo"
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           background: style.bg, color: style.text, border: `1.5px solid ${style.border}`,
