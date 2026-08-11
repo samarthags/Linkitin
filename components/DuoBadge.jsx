@@ -71,6 +71,8 @@ export default function DuoBadge({ duo }) {
 
   const level      = duo.level ?? 1;
   const daysBonded = duo.daysBonded ?? 0;
+  const meName      = duo.me?.name || duo.me?.username || "You";
+  const partnerName = duo.partner?.name || duo.partner?.username || "Partner";
 
   const modal = (
     <div
@@ -125,6 +127,10 @@ export default function DuoBadge({ duo }) {
             <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{daysBonded}</div>
             <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8a8a80", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>Day{daysBonded === 1 ? "" : "s"} bonded</div>
           </div>
+        </div>
+
+        <div style={{ fontSize: 12, color: "#5c5c50", lineHeight: 1.55, marginTop: 16, fontWeight: 600, animation: "duoNumIn .3s .16s both" }}>
+          <strong style={{ color: BLACK }}>{meName}</strong> and <strong style={{ color: BLACK }}>{partnerName}</strong> have had a Duo on Linkitin for the last {daysBonded} day{daysBonded === 1 ? "" : "s"}.
         </div>
       </div>
     </div>
