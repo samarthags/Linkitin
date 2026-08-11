@@ -231,10 +231,18 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [loading,      setLoading]      = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
   const [duo,          setDuo]          = useState(null);
+  const [scrolled,     setScrolled]     = useState(false);
 
   useEffect(()=>{
     if (user?.username) track(user.username, "view");
   },[]);
+
+  // ── Hide the scroll-down hint once the person actually starts scrolling ──
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // ── Dynamic Duo: fetch public duo status for this profile ──
   useEffect(() => {
@@ -246,7 +254,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   }, [user?.username]);
 
   /* ── Fixed light theme — TeenStore-inspired: cream bg, black text, muted lime accent ── */
-  const theme = { accent:"#d7ff3f", glow:"rgba(215,255,63,.22)", hero:"#fafaf7", badge:"#0a0a0a" };
+  const theme = { accent:"#d7ff3f", glow:"rgba(215,255,63,.10)", hero:"#fafaf7", badge:"#0a0a0a" };
 
   useEffect(()=>{
     if (!user) { setLoading(false); return; }
@@ -503,17 +511,32 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
           @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
           @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
+          @keyframes scrollWheel{0%{transform:translateY(0);opacity:1;}70%{opacity:0;}100%{transform:translateY(14px);opacity:0;}}
+          @keyframes scrollHintIn{from{opacity:0;transform:translate(-50%,8px);}to{opacity:1;transform:translate(-50%,0);}}
+          .scroll-hint{
+            position:absolute;left:50%;bottom:18px;z-index:2;
+            width:26px;height:42px;border-radius:14px;
+            border:2px solid rgba(10,10,10,.55);
+            display:flex;justify-content:center;padding-top:7px;
+            animation:scrollHintIn .6s 1.3s cubic-bezier(.16,1,.3,1) both;
+            transition:opacity .35s ease;
+            pointer-events:none;
+          }
+          .scroll-hint span{
+            width:4px;height:8px;border-radius:2px;background:rgba(10,10,10,.6);
+            animation:scrollWheel 1.6s ease-in-out infinite;
+          }
           @keyframes blurReveal{from{opacity:0;filter:blur(10px);transform:translateY(14px);}to{opacity:1;filter:blur(0);transform:translateY(0);}}
           .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
-          .blur-in{animation:blurReveal .78s cubic-bezier(.16,1,.3,1) both;}
+          .blur-in{animation:blurReveal 1.05s cubic-bezier(.16,1,.3,1) both;}
 
-          .s1{animation:slideUp .74s .02s cubic-bezier(.16,1,.3,1) both;}
-          .s2{animation:slideUp .74s .10s cubic-bezier(.16,1,.3,1) both;}
-          .s3{animation:slideUp .74s .18s cubic-bezier(.16,1,.3,1) both;}
-          .s4{animation:slideUp .74s .26s cubic-bezier(.16,1,.3,1) both;}
-          .s5{animation:slideUp .74s .34s cubic-bezier(.16,1,.3,1) both;}
-          .s6{animation:slideUp .74s .42s cubic-bezier(.16,1,.3,1) both;}
-          .s7{animation:slideUp .74s .50s cubic-bezier(.16,1,.3,1) both;}
+          .s1{animation:slideUp .95s .04s cubic-bezier(.16,1,.3,1) both;}
+          .s2{animation:slideUp .95s .16s cubic-bezier(.16,1,.3,1) both;}
+          .s3{animation:slideUp .95s .28s cubic-bezier(.16,1,.3,1) both;}
+          .s4{animation:slideUp .95s .40s cubic-bezier(.16,1,.3,1) both;}
+          .s5{animation:slideUp .95s .52s cubic-bezier(.16,1,.3,1) both;}
+          .s6{animation:slideUp .95s .64s cubic-bezier(.16,1,.3,1) both;}
+          .s7{animation:slideUp .95s .76s cubic-bezier(.16,1,.3,1) both;}
           .s-fab{animation:popIn .5s .3s cubic-bezier(.34,1.56,.64,1) both;}
 
           .hero{position:relative;width:100%;height:52vh;min-height:280px;max-height:440px;overflow:hidden;animation:fadeIn .8s ease both;background:#fafaf7;}
@@ -522,7 +545,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(1.01) contrast(1.02) saturate(1.03);animation:heroZoom 6s ease-out both;}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:none;animation:heroZoom 6s ease-out both;}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
@@ -544,7 +567,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           }
           .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
 
-          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:-32px;}
+          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:6px;}
           .pname{font-size:clamp(30px,8.5vw,50px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;color:#0a0a0a;letter-spacing:-.01em;line-height:1.02;margin-bottom:10px;text-transform:uppercase;}
           .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
 
@@ -649,7 +672,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           @media(max-width:420px){
             .hero{height:48vh;}
-            .id-block{margin-top:-24px;}
+            .id-block{margin-top:2px;}
             .pname{font-size:26px;}
             .content{padding:10px 14px 56px;}
             .lbtn{min-height:54px;border-radius:14px;}
@@ -684,10 +707,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       <LoadingScreen visible={loading} />
 
       {/* ── Theme background overlay + subtle dot-grid texture for depth ── */}
-      <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.6,pointerEvents:"none"}}/>
+      <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.35,pointerEvents:"none"}}/>
       <div style={{
         position:"fixed",inset:0,zIndex:-1,pointerEvents:"none",
-        backgroundImage:"radial-gradient(rgba(10,10,10,.05) 1px, transparent 1px)",
+        backgroundImage:"radial-gradient(rgba(10,10,10,.035) 1px, transparent 1px)",
         backgroundSize:"22px 22px",
       }}/>
 
@@ -709,6 +732,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             fetchpriority="high"
           />
           <div className="hero-fade"/>
+          {!loading && (
+            <div className="scroll-hint" style={{opacity: scrolled ? 0 : 1}}>
+              <span/>
+            </div>
+          )}
         </div>
       ) : (
         <div className="hero-ph">
