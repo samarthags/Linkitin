@@ -1,7 +1,7 @@
 // pages/[username].js — save as [username].js (GitHub can't show brackets in
 // chat, but the actual filename on disk must be exactly [username].js)
 import Head from "next/head";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import clientPromise from "../lib/mongodb";
 import DuoBadge from "../components/DuoBadge";
 import ItinScoreBadge from "../components/ItinScoreBadge";
@@ -232,6 +232,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [showBirthday, setShowBirthday] = useState(false);
   const [duo,          setDuo]          = useState(null);
   const [scrolled,     setScrolled]     = useState(false);
+  const [contentRevealed, setContentRevealed] = useState(false);
+  const contentRef = useRef(null);
 
   useEffect(()=>{
     if (user?.username) track(user.username, "view");
@@ -243,6 +245,25 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // ── Reveal the below-the-fold content (bio, socials, links, spotify) only
+  // once it's actually scrolled into view, instead of animating it in on
+  // page load while it's still off-screen and invisible. ──
+  useEffect(() => {
+    if (!contentRef.current || contentRevealed) return;
+    const el = contentRef.current;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setContentRevealed(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.08 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [contentRef, contentRevealed]);
 
   // ── Dynamic Duo: fetch public duo status for this profile ──
   useEffect(() => {
@@ -421,6 +442,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   // so the reveal plays as a real staggered entrance instead of everything
   // already being in its final state when the splash fades out.
   const reveal = (cls) => (!loading ? ` ${cls}` : "");
+  // Same idea as reveal(), but gated on the content section actually having
+  // scrolled into view, not on the page-load splash clearing.
+  const revealScroll = (cls) => (contentRevealed ? ` ${cls}` : "");
 
   return (
     <>
@@ -512,20 +536,21 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
           @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
           @keyframes scrollWheel{0%{transform:translateY(0);opacity:1;}70%{opacity:0;}100%{transform:translateY(14px);opacity:0;}}
-          @keyframes scrollHintIn{from{opacity:0;transform:translate(-50%,8px);}to{opacity:1;transform:translate(-50%,0);}}
+          @keyframes scrollHintIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+          .hero-screen{display:flex;flex-direction:column;align-items:stretch;min-height:100vh;min-height:100svh;padding-bottom:18px;}
           .scroll-hint{
-            position:absolute;left:50%;bottom:6px;z-index:2;
+            margin-top:auto;padding-top:24px;
             display:flex;flex-direction:column;align-items:center;gap:6px;
+            background:none;border:none;cursor:pointer;
             animation:scrollHintIn .6s 1.3s cubic-bezier(.16,1,.3,1) both;
             transition:opacity .35s ease;
-            pointer-events:none;
+            -webkit-tap-highlight-color:transparent;
           }
           .scroll-hint-mouse{
             width:24px;height:38px;border-radius:13px;
-            background:rgba(255,255,255,.35);
-            -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-            border:1.5px solid rgba(10,10,10,.4);
-            box-shadow:0 2px 8px rgba(10,10,10,.12);
+            background:#fff;
+            border:1.5px solid rgba(10,10,10,.35);
+            box-shadow:0 2px 8px rgba(10,10,10,.06);
             display:flex;justify-content:center;padding-top:6px;
           }
           .scroll-hint span{
@@ -728,80 +753,94 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <i className="fas fa-arrow-up-from-bracket"/>
       </button>
 
-      {/* ── HERO ── */}
-      {user.avatar ? (
-        <div className="hero">
-          <img
-            src={user.avatar}
-            alt={`${user.name}'s profile photo`}
-            className="hero-img"
-            fetchpriority="high"
-          />
-          <div className="hero-fade"/>
-          {!loading && (
-            <div className="scroll-hint" style={{opacity: scrolled ? 0 : 1}}>
-              <div className="scroll-hint-mouse"><span/></div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="hero-ph">
-          <div className="av-ph">{user.name?.charAt(0)?.toUpperCase()||"?"}</div>
-        </div>
-      )}
+      {/* ── HERO SCREEN — photo, name, badges. Fills the first viewport;
+          everything else waits below the fold until scrolled into view. ── */}
+      <div className="hero-screen">
+        {user.avatar ? (
+          <div className="hero">
+            <img
+              src={user.avatar}
+              alt={`${user.name}'s profile photo`}
+              className="hero-img"
+              fetchpriority="high"
+            />
+            <div className="hero-fade"/>
+          </div>
+        ) : (
+          <div className="hero-ph">
+            <div className="av-ph">{user.name?.charAt(0)?.toUpperCase()||"?"}</div>
+          </div>
+        )}
 
-      {/* ── Identity ── */}
-      <div className={`id-block${reveal("s1")}`}>
-        <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
-        <div className="badge-row">
-          {/* Age pill — click to toggle between age and birthday */}
-          {userAge && user.dob && (
-            <span className={reveal("bp")} style={{animationDelay:"0s"}}>
-              <span
-                key={showBirthday ? "bday" : "age"}
-                className="age-pill agePop"
-                onClick={() => setShowBirthday(v => !v)}
-                title={showBirthday ? "Show age" : "Show birthday"}
-              >
-                <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
-                {showBirthday
-                  ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                  : `${userAge} y/o`}
+        {/* ── Identity ── */}
+        <div className={`id-block${reveal("s1")}`}>
+          <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
+          <div className="badge-row">
+            {/* Age pill — click to toggle between age and birthday */}
+            {userAge && user.dob && (
+              <span className={reveal("bp")} style={{animationDelay:"0s"}}>
+                <span
+                  key={showBirthday ? "bday" : "age"}
+                  className="age-pill agePop"
+                  onClick={() => setShowBirthday(v => !v)}
+                  title={showBirthday ? "Show age" : "Show birthday"}
+                >
+                  <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
+                  {showBirthday
+                    ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    : `${userAge} y/o`}
+                </span>
               </span>
-            </span>
-          )}
-          {/* Advanced badge pill */}
-          {badgeLabel && (
-            <span className={reveal("bp")} style={{animationDelay:".06s"}}>
-              <span className="badge-pill">
-                {badgeIcon && <i className={badgeIcon}/>}
-                {badgeLabel}
+            )}
+            {/* Advanced badge pill */}
+            {badgeLabel && (
+              <span className={reveal("bp")} style={{animationDelay:".06s"}}>
+                <span className="badge-pill">
+                  {badgeIcon && <i className={badgeIcon}/>}
+                  {badgeLabel}
+                </span>
               </span>
-            </span>
-          )}
-          {/* Itin score — compact, tap for full tier breakdown. Animates itself
-              in the instant its score arrives, so it's never "late". Works
-              for any profile: fetches live by user.username, nothing hardcoded. */}
-          <ItinScoreBadge username={user.username} />
-          {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
-          {duo && (
-            <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-          )}
+            )}
+            {/* Itin score — compact, tap for full tier breakdown. Animates itself
+                in the instant its score arrives, so it's never "late". Works
+                for any profile: fetches live by user.username, nothing hardcoded. */}
+            <ItinScoreBadge username={user.username} />
+            {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
+            {duo && (
+              <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
+            )}
+          </div>
         </div>
+
+        {/* Scroll hint — sits right below the badges, pinned to the bottom
+            of this first screen. Tap or scroll to reveal the rest. */}
+        {!loading && (
+          <button
+            type="button"
+            className="scroll-hint"
+            style={{opacity: scrolled ? 0 : 1}}
+            aria-label="Scroll down for more"
+            onClick={() => {
+              document.querySelector(".content")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            <div className="scroll-hint-mouse"><span/></div>
+          </button>
+        )}
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="content">
+      <div className="content" ref={contentRef}>
 
-        {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".08s"}}>{bio}</p>}
+        {bio && <p className={`bio-text${contentRevealed ? " blur-in" : ""}`} style={{animationDelay:".08s"}}>{bio}</p>}
 
         {socials.length > 0 && (
-          <div className={`soc-row${reveal("s3")}`}>
+          <div className={`soc-row${revealScroll("s3")}`}>
             {socials.map(([pl,val],idx)=>{
               const m=PLAT[pl];
               return(
                 <a key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className={`soc-btn${reveal("bp")}`} title={m.n} aria-label={m.n}
+                  className={`soc-btn${revealScroll("bp")}`} title={m.n} aria-label={m.n}
                   style={{color:m.c, animationDelay:`${idx*0.035}s`}}
                   onClick={()=>track(user.username, `social_${pl}`)}>
                   <i className={m.i}/>
@@ -812,11 +851,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {(user.links||[]).length > 0 && (
-          <div className={`links-container${reveal("s4")}`}>
+          <div className={`links-container${revealScroll("s4")}`}>
             <div className="links">
               {user.links.map((lnk,i)=>(
                 <a key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
-                  className={`lbtn${reveal("bp")}`}
+                  className={`lbtn${revealScroll("bp")}`}
                   style={{animationDelay:`${i*0.05}s`}}
                   aria-label={lnk.title}
                   onClick={()=>track(user.username,"link_click")}>
@@ -838,7 +877,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {user.favSongTrackId && (
-          <div className={`sp-block${reveal("s5")}`}>
+          <div className={`sp-block${revealScroll("s5")}`}>
             <div className="sp-card">
               <div className={`sp-trig${spOpen?" open":""}`}
                 onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
@@ -869,7 +908,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           </div>
         )}
 
-        <div className={`foot${reveal("s7")}`}>
+        <div className={`foot${revealScroll("s7")}`}>
           <a href="/" className="foot-cta">Create your own profile — it's free</a>
         </div>
 
