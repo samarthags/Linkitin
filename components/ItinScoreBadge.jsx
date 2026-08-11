@@ -2,17 +2,20 @@
 // Standalone badge — NOT linked to Duo. Shows a user's Itin Score, which
 // goes up +10 per interaction (see pages/api/track.js).
 //
-// This badge fetches its score after mount, so it used to pop in late —
-// after the page's own entrance animation had already finished, making it
-// look "delayed" or like nothing had animated at all. Fixed by animating
-// the badge itself the instant it actually renders (right when the score
-// arrives), instead of relying on a wrapper that animates on page mount.
+// Animates itself in the instant its score actually arrives (it fetches
+// after mount, so tying its animation to page-load timing made it look
+// "late" — fixed by animating on its own real mount instead).
+//
+// Rank shows as a fully outlined pill in the rank's own color — same
+// pill language as the TeenStore site's BOYS/GIRLS toggle — rather than a
+// tiny dot. Platinum flips to solid black + lime, like an active/selected
+// tab, since it's the top rank.
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const BLACK  = "#0a0a0a";
-const CREAM  = "#fafaf7";
-const ACCENT = "#FF6A3D"; // warm coral — site accent
+const BLACK = "#0a0a0a";
+const CREAM = "#fafaf7";
+const LIME  = "#d7ff3f";
 
 const TIERS = [
   { min: 0,     label: "Bronze"   },
@@ -21,13 +24,13 @@ const TIERS = [
   { min: 10000, label: "Platinum" },
 ];
 
-// Flat, standard rank colors — a small dot on the pill, a solid chip in the
-// modal. No gradients, no shimmer.
-const TIER_COLOR = {
-  Bronze:   { dot: "#cd7f32", chipBg: "#cd7f32", chipText: "#fff" },
-  Silver:   { dot: "#9aa0ac", chipBg: "#9aa0ac", chipText: "#1a1a1a" },
-  Gold:     { dot: "#e8b923", chipBg: "#e8b923", chipText: "#1a1a1a" },
-  Platinum: { dot: BLACK,     chipBg: BLACK,     chipText: ACCENT },
+// Fully outlined pill per rank — border + text in the rank color, white
+// fill. Platinum is the exception: solid black + lime, like a selected tab.
+const TIER_STYLE = {
+  Bronze:   { border: "#cd7f32", text: "#cd7f32", bg: "#fff" },
+  Silver:   { border: "#8b8f99", text: "#6c707a", bg: "#fff" },
+  Gold:     { border: "#c99a10", text: "#8a6a0a", bg: "#fff" },
+  Platinum: { border: BLACK,     text: LIME,      bg: BLACK  },
 };
 
 function tierFor(score) {
@@ -72,7 +75,7 @@ export default function ItinScoreBadge({ username }) {
 
   if (score == null) return null;
   const tier  = tierFor(score);
-  const color = TIER_COLOR[tier.label];
+  const style = TIER_STYLE[tier.label];
 
   const modal = (
     <div
@@ -104,7 +107,7 @@ export default function ItinScoreBadge({ username }) {
         >×</button>
 
         <div style={{
-          display: "inline-block", background: BLACK, color: ACCENT, borderRadius: 999,
+          display: "inline-block", background: BLACK, color: LIME, borderRadius: 999,
           padding: "3px 10px", fontSize: 9, fontWeight: 800, letterSpacing: ".08em",
           textTransform: "uppercase", marginBottom: 14,
         }}>
@@ -118,8 +121,9 @@ export default function ItinScoreBadge({ username }) {
         <div style={{ textAlign: "center", fontSize: 14, lineHeight: 1.6, color: "#2e2e28", marginBottom: 14 }}>
           <strong>{username}</strong> has an Itin Score of <strong>{score}</strong>, ranked{" "}
           <span style={{
-            display: "inline-block", background: color.chipBg, color: color.chipText,
-            borderRadius: 6, padding: "1px 9px", fontWeight: 800, fontSize: 12.5, letterSpacing: ".02em",
+            display: "inline-block", background: style.bg, color: style.text,
+            border: `2px solid ${style.border}`, borderRadius: 999,
+            padding: "1px 10px", fontWeight: 800, fontSize: 12.5, letterSpacing: ".02em",
           }}>
             {tier.label}
           </span>.
@@ -142,18 +146,17 @@ export default function ItinScoreBadge({ username }) {
         title={`Itin Score — ${tier.label}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: "#fff", color: BLACK, border: `2px solid ${BLACK}`,
+          background: style.bg, color: style.text, border: `2px solid ${style.border}`,
           borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
           fontFamily: "'Sora', sans-serif", cursor: "pointer",
           WebkitTapHighlightColor: "transparent",
-          transition: "background .18s, transform .15s",
+          transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .2s",
           animation: "itinBadgeIn .4s cubic-bezier(.34,1.56,.64,1) both",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#f3f3ea"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: color.dot, flexShrink: 0 }}/>
-        <i className="fas fa-bolt" style={{ fontSize: 10, opacity: .75 }}/>
+        <i className="fas fa-bolt" style={{ fontSize: 10, opacity: .8 }}/>
         {score}
       </button>
 
