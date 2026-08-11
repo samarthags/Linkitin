@@ -193,7 +193,7 @@ export default function DuoBadge({ duo }) {
         onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        <i className="fas fa-link" style={{ fontSize: 10, opacity: .8 }}/>
+        <i className="fas fa-user-group" style={{ fontSize: 10, opacity: .8 }}/>
         Lvl {level}
       </button>
 
