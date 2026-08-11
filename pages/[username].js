@@ -537,10 +537,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
           @keyframes scrollWheel{0%{transform:translateY(0);opacity:1;}70%{opacity:0;}100%{transform:translateY(14px);opacity:0;}}
           @keyframes scrollHintIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-          .hero-screen{display:flex;flex-direction:column;align-items:stretch;min-height:100vh;min-height:100svh;padding-bottom:18px;}
+          .hero-screen{display:flex;flex-direction:column;align-items:stretch;padding-bottom:22px;}
           .scroll-hint{
-            margin-top:auto;padding-top:24px;
-            display:flex;flex-direction:column;align-items:center;gap:6px;
+            margin-top:28px;
+            display:flex;flex-direction:column;align-items:center;gap:7px;
             background:none;border:none;cursor:pointer;
             animation:scrollHintIn .6s 1.3s cubic-bezier(.16,1,.3,1) both;
             transition:opacity .35s ease;
@@ -556,6 +556,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .scroll-hint span{
             width:3.5px;height:7px;border-radius:2px;background:rgba(10,10,10,.65);
             animation:scrollWheel 1.6s ease-in-out infinite;
+          }
+          .scroll-hint-label{
+            font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+            color:rgba(10,10,10,.45);
           }
           @keyframes blurReveal{from{opacity:0;filter:blur(10px);transform:translateY(14px);}to{opacity:1;filter:blur(0);transform:translateY(0);}}
           .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
@@ -576,7 +580,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(.88);animation:heroZoom 6s ease-out both;}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(.82);animation:heroZoom 6s ease-out both;}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
@@ -598,7 +602,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           }
           .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
 
-          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:20px;}
+          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:30px;}
           .pname{font-size:clamp(30px,8.5vw,50px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;color:#0a0a0a;letter-spacing:-.01em;line-height:1.02;margin-bottom:10px;text-transform:uppercase;}
           .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
 
@@ -703,7 +707,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           @media(max-width:420px){
             .hero{height:48vh;}
-            .id-block{margin-top:14px;}
+            .id-block{margin-top:22px;}
             .pname{font-size:26px;}
             .content{padding:10px 14px 56px;}
             .lbtn{min-height:54px;border-radius:14px;}
@@ -810,10 +814,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
             )}
           </div>
+
+          {/* About-me text lives on the first screen too, so it isn't just
+              badges over a big empty gap */}
+          {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".1s", marginBottom:0}}>{bio}</p>}
         </div>
 
-        {/* Scroll hint — sits right below the badges, pinned to the bottom
-            of this first screen. Tap or scroll to reveal the rest. */}
+        {/* Scroll hint — sits right below the bio. Tap or scroll to reveal the rest. */}
         {!loading && (
           <button
             type="button"
@@ -825,14 +832,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             }}
           >
             <div className="scroll-hint-mouse"><span/></div>
+            <span className="scroll-hint-label">Scroll</span>
           </button>
         )}
       </div>
 
       {/* ── CONTENT ── */}
       <div className="content" ref={contentRef}>
-
-        {bio && <p className={`bio-text${contentRevealed ? " blur-in" : ""}`} style={{animationDelay:".08s"}}>{bio}</p>}
 
         {socials.length > 0 && (
           <div className={`soc-row${revealScroll("s3")}`}>
