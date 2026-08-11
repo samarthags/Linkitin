@@ -1,10 +1,10 @@
 // components/DuoBadge.jsx
-// Compact pill — same pattern as ItinScoreBadge, including the same
-// outlined-pill rank language (matches the TeenStore BOYS/GIRLS pill
-// style). Animates itself in the instant it actually mounts with data —
-// no more late pop-in. DPs are clickable and jump straight to that
-// partner's profile. Modal shows Level (animated count-up) plus the
-// bonded-days sentence below it.
+// Compact pill — same plain, neutral style as the age pill (white bg, thin
+// neutral border, black text). No per-level rank theme here, unlike
+// ItinScoreBadge — just one consistent look. Animates itself in the
+// instant it actually mounts with data — no more late pop-in. DPs are
+// clickable and jump straight to that partner's profile. Modal shows
+// Level (animated count-up) plus the bonded-days sentence below it.
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 
@@ -12,19 +12,8 @@ const BLACK = "#0a0a0a";
 const CREAM = "#fafaf7";
 const LIME  = "#d7ff3f";
 
-const TIER_STYLE = {
-  Bronze:   { border: "#cd7f32", text: "#cd7f32", bg: "#fff" },
-  Silver:   { border: "#8b8f99", text: "#6c707a", bg: "#fff" },
-  Gold:     { border: "#c99a10", text: "#8a6a0a", bg: "#fff" },
-  Platinum: { border: BLACK,     text: LIME,      bg: BLACK  },
-};
-
-function duoTier(level) {
-  if (level >= 8) return "Platinum";
-  if (level >= 5) return "Gold";
-  if (level >= 3) return "Silver";
-  return "Bronze";
-}
+// One plain style, same language as .age-pill — no tier variation.
+const PILL = { border: "rgba(10,10,10,.16)", text: BLACK, bg: "#fff" };
 
 function Avatar({ person, z }) {
   const common = {
@@ -109,8 +98,7 @@ export default function DuoBadge({ duo }) {
 
   if (!duo) return null;
 
-  const tier  = duoTier(level);
-  const style = TIER_STYLE[tier];
+  const style = PILL;
   const meName      = duo.me?.name || duo.me?.username || "You";
   const partnerName = duo.partner?.name || duo.partner?.username || "Partner";
 
@@ -144,12 +132,12 @@ export default function DuoBadge({ duo }) {
         >×</button>
 
         <div style={{
-          display: "inline-block", background: style.bg, color: style.text,
-          border: `1.5px solid ${style.border}`, borderRadius: 999,
+          display: "inline-block", background: BLACK, color: LIME,
+          border: "none", borderRadius: 999,
           padding: "3px 10px", fontSize: 9, fontWeight: 800,
           letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 16,
         }}>
-          Dynamic Duo · {tier}
+          Dynamic Duo
         </div>
 
         {/* DPs — tap either one to jump straight to that profile */}
@@ -193,7 +181,7 @@ export default function DuoBadge({ duo }) {
         onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        <i className="fas fa-user-group" style={{ fontSize: 10, opacity: .8 }}/>
+        <i className="fas fa-circle-nodes" style={{ fontSize: 10, opacity: .8 }}/>
         Lvl {level}
       </button>
 
