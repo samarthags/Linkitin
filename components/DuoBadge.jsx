@@ -1,21 +1,22 @@
 // components/DuoBadge.jsx
-// Compact pill — same pattern as ItinScoreBadge. Animates itself in the
-// instant it actually renders (fixes the "late pop-in" delay). DPs are
-// clickable and jump straight to that partner's profile. Modal shows just
-// the Level, plus the bonded-days sentence below it — no separate stat box.
+// Compact pill — same pattern as ItinScoreBadge, including the same
+// outlined-pill rank language (matches the TeenStore BOYS/GIRLS pill
+// style). Animates itself in the instant it actually mounts with data —
+// no more late pop-in. DPs are clickable and jump straight to that
+// partner's profile. Modal shows Level (animated count-up) plus the
+// bonded-days sentence below it.
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const BLACK  = "#0a0a0a";
-const CREAM  = "#fafaf7";
-const ACCENT = "#FF6A3D"; // warm coral — site accent
+const BLACK = "#0a0a0a";
+const CREAM = "#fafaf7";
+const LIME  = "#d7ff3f";
 
-// Flat, standard rank colors — matches ItinScoreBadge's language.
-const TIER_COLOR = {
-  Bronze:   { dot: "#cd7f32", chipBg: "#cd7f32", chipText: "#fff" },
-  Silver:   { dot: "#9aa0ac", chipBg: "#9aa0ac", chipText: "#1a1a1a" },
-  Gold:     { dot: "#e8b923", chipBg: "#e8b923", chipText: "#1a1a1a" },
-  Platinum: { dot: BLACK,     chipBg: BLACK,     chipText: ACCENT },
+const TIER_STYLE = {
+  Bronze:   { border: "#cd7f32", text: "#cd7f32", bg: "#fff" },
+  Silver:   { border: "#8b8f99", text: "#6c707a", bg: "#fff" },
+  Gold:     { border: "#c99a10", text: "#8a6a0a", bg: "#fff" },
+  Platinum: { border: BLACK,     text: LIME,      bg: BLACK  },
 };
 
 function duoTier(level) {
@@ -35,8 +36,8 @@ function Avatar({ person, z }) {
     ? <img src={person.avatar} alt="" style={{ ...common, objectFit: "cover" }} />
     : (
       <div style={{
-        ...common, background: ACCENT, display: "flex",
-        alignItems: "center", justifyContent: "center", fontWeight: 900, color: "#fff", fontSize: 18,
+        ...common, background: LIME, display: "flex",
+        alignItems: "center", justifyContent: "center", fontWeight: 900, color: BLACK, fontSize: 18,
       }}>
         {person?.name?.[0]?.toUpperCase() || person?.username?.[0]?.toUpperCase() || "?"}
       </div>
@@ -109,7 +110,7 @@ export default function DuoBadge({ duo }) {
   if (!duo) return null;
 
   const tier  = duoTier(level);
-  const color = TIER_COLOR[tier];
+  const style = TIER_STYLE[tier];
   const meName      = duo.me?.name || duo.me?.username || "You";
   const partnerName = duo.partner?.name || duo.partner?.username || "Partner";
 
@@ -143,8 +144,9 @@ export default function DuoBadge({ duo }) {
         >×</button>
 
         <div style={{
-          display: "inline-block", background: color.chipBg, color: color.chipText,
-          borderRadius: 999, padding: "3px 10px", fontSize: 9, fontWeight: 800,
+          display: "inline-block", background: style.bg, color: style.text,
+          border: `1.5px solid ${style.border}`, borderRadius: 999,
+          padding: "3px 10px", fontSize: 9, fontWeight: 800,
           letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 16,
         }}>
           Dynamic Duo · {tier}
@@ -180,18 +182,18 @@ export default function DuoBadge({ duo }) {
         title={`Dynamic Duo — ${tier}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: "#fff", color: BLACK, border: `2px solid ${BLACK}`,
-          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
+          background: style.bg, color: style.text, border: `1.5px solid ${style.border}`,
+          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 700,
           fontFamily: "'Sora', sans-serif", cursor: "pointer",
           WebkitTapHighlightColor: "transparent",
-          transition: "background .18s, transform .15s",
+          boxShadow: "0 1px 2px rgba(10,10,10,.03)",
+          transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .2s",
           animation: "duoBadgeIn .4s cubic-bezier(.34,1.56,.64,1) both",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#f3f3ea"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: color.dot, flexShrink: 0 }}/>
-        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .75 }}/>
+        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .8 }}/>
         Lvl {level}
       </button>
 
