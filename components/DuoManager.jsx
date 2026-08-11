@@ -1,144 +1,202 @@
-// components/DuoManager.jsx — NO-AUTH TEST VERSION
-// Dashboard-only: invites are sent AND accepted/declined here, never on
-// the public profile page (public side only ever displays the DuoBadge,
-// read-only). Pass the current user's username as a prop.
-import { useState, useEffect, useCallback } from "react";
-import DuoBadge from "./DuoBadge";
+// components/DuoBadge.jsx
+// Compact pill — same pattern as ItinScoreBadge, including the same
+// outlined-pill rank language (matches the TeenStore BOYS/GIRLS pill
+// style). Animates itself in the instant it actually mounts with data —
+// no more late pop-in. DPs are clickable and jump straight to that
+// partner's profile. Modal shows Level (animated count-up) plus the
+// bonded-days sentence below it.
+import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 
-const AC = "#6C63FF";
+const BLACK = "#0a0a0a";
+const CREAM = "#fafaf7";
+const LIME  = "#d7ff3f";
 
-export default function DuoManager({ username }) {
-  const [status,  setStatus]  = useState("loading"); // loading|none|pending_sent|pending_received|active
-  const [data,    setData]    = useState(null);
-  const [query,   setQuery]   = useState("");
-  const [results, setResults] = useState([]);
-  const [sending, setSending] = useState(false);
-  const [msg,     setMsg]     = useState("");
+const TIER_STYLE = {
+  Bronze:   { border: "#cd7f32", text: "#cd7f32", bg: "#fff" },
+  Silver:   { border: "#8b8f99", text: "#6c707a", bg: "#fff" },
+  Gold:     { border: "#c99a10", text: "#8a6a0a", bg: "#fff" },
+  Platinum: { border: BLACK,     text: LIME,      bg: BLACK  },
+};
 
-  const load = useCallback(async () => {
-    if (!username) { setStatus("none"); return; }
-    try {
-      const r = await fetch(`/api/duo/status?username=${username}`);
-      const d = await r.json();
-      setStatus(d.status);
-      setData(d);
-    } catch (_) { setStatus("none"); }
-  }, [username]);
+function duoTier(level) {
+  if (level >= 8) return "Platinum";
+  if (level >= 5) return "Gold";
+  if (level >= 3) return "Silver";
+  return "Bronze";
+}
 
-  useEffect(() => { load(); }, [load]);
-
-  const search = (q) => {
-    setQuery(q);
-    if (q.length < 2) { setResults([]); return; }
-    fetch(`/api/duo/search?q=${encodeURIComponent(q)}&exclude=${username}`)
-      .then(r => r.json()).then(d => setResults(d.results || []))
-      .catch(() => setResults([]));
+function Avatar({ person, z }) {
+  const common = {
+    width: 56, height: 56, borderRadius: "50%",
+    border: `2.5px solid ${BLACK}`, marginRight: z === 2 ? -16 : 0, zIndex: z,
+    flexShrink: 0, boxShadow: `0 0 0 3px ${CREAM}`, display: "block",
   };
+  return person?.avatar
+    ? <img src={person.avatar} alt="" style={{ ...common, objectFit: "cover" }} />
+    : (
+      <div style={{
+        ...common, background: LIME, display: "flex",
+        alignItems: "center", justifyContent: "center", fontWeight: 900, color: BLACK, fontSize: 18,
+      }}>
+        {person?.name?.[0]?.toUpperCase() || person?.username?.[0]?.toUpperCase() || "?"}
+      </div>
+    );
+}
 
-  const invite = async (toUsername) => {
-    setSending(true); setMsg("");
-    try {
-      const r = await fetch("/api/duo/invite", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromUsername: username, toUsername }),
-      });
-      const d = await r.json();
-      if (!r.ok) { setMsg(d.error || "Failed to send invite"); return; }
-      setQuery(""); setResults([]);
-      await load();
-    } finally { setSending(false); }
-  };
+function ProfileLink({ username, children }) {
+  if (!username) return <>{children}</>;
+  return (
+    <a
+      href={`/${username}`}
+      onClick={(e) => e.stopPropagation()}
+      style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
+      title={`Visit @${username}`}
+    >
+      {children}
+    </a>
+  );
+}
 
-  const respond = async (action) => {
-    const r = await fetch("/api/duo/respond", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, action }),
-    });
-    if (r.ok) load();
-  };
+// Counts up from 0 to `target` with an ease-out curve while `active` is true.
+function useCountUp(target, active, duration = 750) {
+  const [val, setVal] = useState(0);
+  const raf = useRef(null);
+  useEffect(() => {
+    if (!active) { setVal(0); return; }
+    const start = performance.now();
+    const step = (t) => {
+      const p = Math.min(1, (t - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(eased * target));
+      if (p < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => raf.current && cancelAnimationFrame(raf.current);
+  }, [target, active, duration]);
+  return val;
+}
 
-  const remove = async () => {
-    if (!confirm("End this duo? This can't be undone.")) return;
-    await fetch("/api/duo/remove", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    });
-    load();
-  };
+const KEYFRAMES = `
+@keyframes duoBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes duoCardIn { from { opacity: 0; transform: scale(.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes duoAvatarsIn { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+@keyframes duoNumIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes duoBadgeIn { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+`;
 
-  if (status === "loading") return null;
+export default function DuoBadge({ duo }) {
+  const [open,    setOpen]    = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  const level      = duo?.level ?? 1;
+  const daysBonded = duo?.daysBonded ?? 0;
+  const animLevel  = useCountUp(level, open);
+
+  if (!duo) return null;
+
+  const tier  = duoTier(level);
+  const style = TIER_STYLE[tier];
+  const meName      = duo.me?.name || duo.me?.username || "You";
+  const partnerName = duo.partner?.name || duo.partner?.username || "Partner";
+
+  const modal = (
+    <div
+      onClick={() => setOpen(false)}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 99999,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20, backdropFilter: "blur(4px)",
+        animation: "duoBackdropIn .18s ease both",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: CREAM, borderRadius: 20, border: `2px solid ${BLACK}`,
+          boxShadow: "0 20px 50px rgba(0,0,0,.35)",
+          width: "100%", maxWidth: 280, padding: "22px 20px", position: "relative",
+          fontFamily: "'Sora', sans-serif", textAlign: "center",
+          animation: "duoCardIn .22s cubic-bezier(.2,.9,.3,1.15) both",
+        }}
+      >
+        <button
+          type="button" onClick={() => setOpen(false)} aria-label="Close"
+          style={{
+            position: "absolute", top: 12, right: 12, width: 26, height: 26,
+            borderRadius: "50%", background: BLACK, color: "#fff", border: "none",
+            fontSize: 14, cursor: "pointer", lineHeight: 1,
+          }}
+        >×</button>
+
+        <div style={{
+          display: "inline-block", background: style.bg, color: style.text,
+          border: `2px solid ${style.border}`, borderRadius: 999,
+          padding: "3px 10px", fontSize: 9, fontWeight: 800,
+          letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 16,
+        }}>
+          Dynamic Duo · {tier}
+        </div>
+
+        {/* DPs — tap either one to jump straight to that profile */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18, animation: "duoAvatarsIn .35s .05s cubic-bezier(.34,1.56,.64,1) both" }}>
+          <ProfileLink username={duo.me?.username}><Avatar person={duo.me} z={2} /></ProfileLink>
+          <ProfileLink username={duo.partner?.username}><Avatar person={duo.partner} z={1} /></ProfileLink>
+        </div>
+
+        <div style={{ animation: "duoNumIn .3s .1s both" }}>
+          <div style={{ background: "#f3f3ea", borderRadius: 14, padding: "14px 6px", maxWidth: 140, margin: "0 auto" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{animLevel}</div>
+            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8a8a80", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>Level</div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 12, color: "#5c5c50", lineHeight: 1.55, marginTop: 16, fontWeight: 600, animation: "duoNumIn .3s .16s both" }}>
+          <strong style={{ color: BLACK }}>{meName}</strong> and <strong style={{ color: BLACK }}>{partnerName}</strong> have had a Duo on Linkitin for the last {daysBonded} day{daysBonded === 1 ? "" : "s"}.
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10, background: "#f0edff", color: AC,
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
-        }}>
-          <i className="fas fa-user-group"/>
-        </div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>Dynamic Duo</div>
-      </div>
+    <>
+      <style>{KEYFRAMES}</style>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`Dynamic Duo — Level ${level}, ${tier} tier`}
+        title={`Dynamic Duo — ${tier}`}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: style.bg, color: style.text, border: `2px solid ${style.border}`,
+          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
+          fontFamily: "'Sora', sans-serif", cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+          transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .2s",
+          animation: "duoBadgeIn .4s cubic-bezier(.34,1.56,.64,1) both",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+      >
+        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .8 }}/>
+        Lvl {level}
+      </button>
 
-      {status === "active" && data?.duo && (
-        <>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-            <DuoBadge duo={{ ...data.duo, me: { username }, partner: data.partner }} />
-          </div>
-          <button className="btn btn-d" style={{ width: "100%" }} onClick={remove}>
-            <i className="fas fa-heart-crack"/> End Duo
-          </button>
-        </>
-      )}
-
-      {status === "pending_sent" && (
-        <div style={{ textAlign: "center", padding: "16px 0" }}>
-          <i className="fas fa-hourglass-half" style={{ fontSize: 22, color: "#f59e0b", marginBottom: 8, display: "block" }}/>
-          <div style={{ fontSize: 14, color: "#374151", marginBottom: 12 }}>
-            Waiting for <strong>@{data?.partner?.username}</strong> to accept
-          </div>
-          <button className="btn btn-s" onClick={remove}>Cancel Invite</button>
-        </div>
-      )}
-
-      {status === "pending_received" && (
-        <div style={{ textAlign: "center", padding: "16px 0" }}>
-          <div style={{ fontSize: 14, color: "#374151", marginBottom: 14 }}>
-            <strong>@{data?.partner?.username}</strong> wants to be your Duo
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn btn-s" style={{ flex: 1 }} onClick={() => respond("decline")}>Decline</button>
-            <button className="btn btn-g" style={{ flex: 1 }} onClick={() => respond("accept")}>Accept</button>
-          </div>
-        </div>
-      )}
-
-      {status === "none" && (
-        <div>
-          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
-            Pair up with a friend to show combined stats and level up together.
-          </p>
-          <input className="inp" placeholder="Search username..." value={query}
-            onChange={e => search(e.target.value)} style={{ marginBottom: 8 }} />
-          {results.map(u => (
-            <div key={u.username} className="lr" style={{ marginBottom: 6 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: "50%", background: "#ede9ff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 700, color: AC, flexShrink: 0,
-              }}>
-                {u.name?.[0]?.toUpperCase() || "?"}
-              </div>
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>@{u.username}</div>
-              <button className="btn btn-p" style={{ padding: "6px 12px", fontSize: 12 }}
-                disabled={sending} onClick={() => invite(u.username)}>
-                Invite
-              </button>
-            </div>
-          ))}
-          {msg && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 8 }}>{msg}</div>}
-        </div>
-      )}
-    </div>
+      {open && mounted && createPortal(modal, document.body)}
+    </>
   );
 }
