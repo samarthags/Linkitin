@@ -122,7 +122,7 @@ export default function ItinScoreBadge({ username }) {
           <strong>{username}</strong> has an Itin Score of <strong>{score}</strong>, ranked{" "}
           <span style={{
             display: "inline-block", background: style.bg, color: style.text,
-            border: `2px solid ${style.border}`, borderRadius: 999,
+            border: `1.5px solid ${style.border}`, borderRadius: 999,
             padding: "1px 10px", fontWeight: 800, fontSize: 12.5, letterSpacing: ".02em",
           }}>
             {tier.label}
@@ -146,10 +146,11 @@ export default function ItinScoreBadge({ username }) {
         title={`Itin Score — ${tier.label}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: style.bg, color: style.text, border: `2px solid ${style.border}`,
-          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
+          background: style.bg, color: style.text, border: `1.5px solid ${style.border}`,
+          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 700,
           fontFamily: "'Sora', sans-serif", cursor: "pointer",
           WebkitTapHighlightColor: "transparent",
+          boxShadow: "0 1px 2px rgba(10,10,10,.03)",
           transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .2s",
           animation: "itinBadgeIn .4s cubic-bezier(.34,1.56,.64,1) both",
         }}
