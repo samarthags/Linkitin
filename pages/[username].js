@@ -502,6 +502,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
           @keyframes popIn{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
           @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
+          @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
+          @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
+          .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
 
           .s1{animation:slideUp .62s .02s cubic-bezier(.16,1,.3,1) both;}
           .s2{animation:slideUp .62s .10s cubic-bezier(.16,1,.3,1) both;}
@@ -518,7 +521,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(1.01) contrast(1.02) saturate(1.03);}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(1.01) contrast(1.02) saturate(1.03);animation:heroZoom 6s ease-out both;}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
@@ -646,6 +649,25 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             .sp-trig{padding:12px 14px;}
             .badge-row{gap:6px;}
           }
+
+          /* ── Tablet ── */
+          @media(min-width:601px){
+            .content{max-width:580px;padding:22px 24px 84px;}
+            .bio-text{font-size:16px;}
+            .soc-btn{width:50px;height:50px;font-size:18px;}
+            .lbtn{padding:14px 16px;}
+            .lbtn-t{font-size:15px;}
+          }
+
+          /* ── Desktop ── */
+          @media(min-width:900px){
+            .hero{height:58vh;max-height:520px;}
+            .content{max-width:640px;padding:26px 24px 96px;}
+            .pname{font-size:clamp(38px,5vw,56px);}
+            .lbtn:hover{transform:translateY(-2px);}
+            .lbtn{transition:background .14s,box-shadow .14s,transform .14s;}
+            .soc-btn:hover{transform:translateY(-4px) scale(1.08);}
+          }
         `}</style>
       </Head>
 
@@ -688,7 +710,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           {userAge && user.dob && (
             <span className={reveal("bp")} style={{animationDelay:"0s"}}>
               <span
-                className="age-pill"
+                key={showBirthday ? "bday" : "age"}
+                className="age-pill agePop"
                 onClick={() => setShowBirthday(v => !v)}
                 title={showBirthday ? "Show age" : "Show birthday"}
               >
@@ -713,6 +736,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <span className={reveal("bp")} style={{animationDelay:".12s"}}>
             <ItinScoreBadge username={user.username} />
           </span>
+          {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
+          {duo && (
+            <span className={reveal("bp")} style={{animationDelay:".18s"}}>
+              <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
+            </span>
+          )}
         </div>
       </div>
 
@@ -721,20 +750,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
         {bio && <p className={`bio-text${reveal("s2")}`}>{bio}</p>}
 
-        {/* Dynamic Duo — advanced card, above the social row, always visible */}
-        {duo && (
-          <div className={reveal("s3")}>
-            <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-          </div>
-        )}
-
         {socials.length > 0 && (
-          <div className={`soc-row${reveal("s4")}`}>
-            {socials.map(([pl,val])=>{
+          <div className={`soc-row${reveal("s3")}`}>
+            {socials.map(([pl,val],idx)=>{
               const m=PLAT[pl];
               return(
                 <a key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className="soc-btn" title={m.n} aria-label={m.n} style={{color:m.c}}
+                  className={`soc-btn${reveal("bp")}`} title={m.n} aria-label={m.n}
+                  style={{color:m.c, animationDelay:`${idx*0.035}s`}}
                   onClick={()=>track(user.username, `social_${pl}`)}>
                   <i className={m.i}/>
                 </a>
@@ -744,11 +767,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {(user.links||[]).length > 0 && (
-          <div className={`links-container${reveal("s5")}`}>
+          <div className={`links-container${reveal("s4")}`}>
             <div className="links">
               {user.links.map((lnk,i)=>(
                 <a key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
-                  className="lbtn"
+                  className={`lbtn${reveal("bp")}`}
+                  style={{animationDelay:`${i*0.05}s`}}
                   aria-label={lnk.title}
                   onClick={()=>track(user.username,"link_click")}>
                   <div className="lbtn-ic-wrap">
@@ -769,7 +793,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {user.favSongTrackId && (
-          <div className={`sp-block${reveal("s6")}`}>
+          <div className={`sp-block${reveal("s5")}`}>
             <div className="sp-card">
               <div className={`sp-trig${spOpen?" open":""}`}
                 onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
