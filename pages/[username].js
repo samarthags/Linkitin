@@ -544,7 +544,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           }
           .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
 
-          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:-56px;}
+          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:-32px;}
           .pname{font-size:clamp(30px,8.5vw,50px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;color:#0a0a0a;letter-spacing:-.01em;line-height:1.02;margin-bottom:10px;text-transform:uppercase;}
           .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
 
@@ -552,15 +552,16 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .age-pill{
             display:inline-flex;align-items:center;gap:5px;
             background:#fff;
-            border:2px solid #0a0a0a;
+            border:1.5px solid rgba(10,10,10,.16);
             border-radius:999px;padding:6px 13px;
-            font-size:12px;font-weight:800;
+            font-size:12px;font-weight:700;
             color:#0a0a0a;
             cursor:pointer;
-            transition:background .25s cubic-bezier(.16,1,.3,1),transform .22s cubic-bezier(.34,1.56,.64,1);
+            box-shadow:0 1px 2px rgba(10,10,10,.03);
+            transition:background .25s cubic-bezier(.16,1,.3,1),transform .22s cubic-bezier(.34,1.56,.64,1),border-color .2s;
             user-select:none;
           }
-          .age-pill:hover{background:#f3f3ea;}
+          .age-pill:hover{background:#f3f3ea;border-color:rgba(10,10,10,.3);}
           .age-pill:active{transform:scale(.94);}
           .age-pill i{font-size:9px;opacity:.7;}
 
@@ -648,7 +649,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           @media(max-width:420px){
             .hero{height:48vh;}
-            .id-block{margin-top:-44px;}
+            .id-block{margin-top:-24px;}
             .pname{font-size:26px;}
             .content{padding:10px 14px 56px;}
             .lbtn{min-height:54px;border-radius:14px;}
