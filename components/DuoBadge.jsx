@@ -1,22 +1,21 @@
 // components/DuoBadge.jsx
-// Compact pill — same pattern as ItinScoreBadge: small trigger, tap opens a
-// portal modal with an animated reveal. The two DPs are clickable and jump
-// straight to that partner's profile. The badge's look changes by Duo
-// level, same tier language as Itin Score, so a higher-level Duo visibly
-// reads as more advanced.
+// Compact pill — same pattern as ItinScoreBadge. Animates itself in the
+// instant it actually renders (fixes the "late pop-in" delay). DPs are
+// clickable and jump straight to that partner's profile. Modal shows just
+// the Level, plus the bonded-days sentence below it — no separate stat box.
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const BLACK = "#0a0a0a";
-const CREAM = "#fafaf7";
-const LIME  = "#d7ff3f";
+const BLACK  = "#0a0a0a";
+const CREAM  = "#fafaf7";
+const ACCENT = "#FF6A3D"; // warm coral — site accent
 
-// Level -> tier, same visual language as ItinScoreBadge's rank styling.
-const TIER_STYLE = {
-  Bronze:   { bg: "#fff",                                              border: BLACK,     text: BLACK, glow: "none",                            shimmer: false },
-  Silver:   { bg: "linear-gradient(135deg,#f6f6f9,#cfd1da 55%,#f0f0f4)", border: "#9a9aa6", text: BLACK, glow: "0 0 12px rgba(150,150,165,.35)",  shimmer: false },
-  Gold:     { bg: "linear-gradient(135deg,#fff2c9,#e7b423 60%,#fff2c9)", border: "#b4870f", text: "#4a3300", glow: "0 0 16px rgba(231,180,35,.45)", shimmer: true  },
-  Platinum: { bg: "linear-gradient(135deg,#0a0a0a,#233b2e 45%,#0a0a0a)", border: BLACK,     text: LIME,  glow: "0 0 18px rgba(215,255,63,.5)",     shimmer: true  },
+// Flat, standard rank colors — matches ItinScoreBadge's language.
+const TIER_COLOR = {
+  Bronze:   { dot: "#cd7f32", chipBg: "#cd7f32", chipText: "#fff" },
+  Silver:   { dot: "#9aa0ac", chipBg: "#9aa0ac", chipText: "#1a1a1a" },
+  Gold:     { dot: "#e8b923", chipBg: "#e8b923", chipText: "#1a1a1a" },
+  Platinum: { dot: BLACK,     chipBg: BLACK,     chipText: ACCENT },
 };
 
 function duoTier(level) {
@@ -36,8 +35,8 @@ function Avatar({ person, z }) {
     ? <img src={person.avatar} alt="" style={{ ...common, objectFit: "cover" }} />
     : (
       <div style={{
-        ...common, background: LIME, display: "flex",
-        alignItems: "center", justifyContent: "center", fontWeight: 900, color: BLACK, fontSize: 18,
+        ...common, background: ACCENT, display: "flex",
+        alignItems: "center", justifyContent: "center", fontWeight: 900, color: "#fff", fontSize: 18,
       }}>
         {person?.name?.[0]?.toUpperCase() || person?.username?.[0]?.toUpperCase() || "?"}
       </div>
@@ -82,8 +81,7 @@ const KEYFRAMES = `
 @keyframes duoCardIn { from { opacity: 0; transform: scale(.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes duoAvatarsIn { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
 @keyframes duoNumIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes duoShimmer { 0% { transform: translateX(-130%) skewX(-12deg); } 100% { transform: translateX(230%) skewX(-12deg); } }
-@keyframes duoGlowPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes duoBadgeIn { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 `;
 
 export default function DuoBadge({ duo }) {
@@ -104,15 +102,14 @@ export default function DuoBadge({ duo }) {
     };
   }, [open]);
 
-  const level       = duo?.level ?? 1;
-  const daysBonded  = duo?.daysBonded ?? 0;
-  const animLevel   = useCountUp(level, open);
-  const animDays    = useCountUp(daysBonded, open);
+  const level      = duo?.level ?? 1;
+  const daysBonded = duo?.daysBonded ?? 0;
+  const animLevel  = useCountUp(level, open);
 
   if (!duo) return null;
 
   const tier  = duoTier(level);
-  const style = TIER_STYLE[tier];
+  const color = TIER_COLOR[tier];
   const meName      = duo.me?.name || duo.me?.username || "You";
   const partnerName = duo.partner?.name || duo.partner?.username || "Partner";
 
@@ -146,36 +143,23 @@ export default function DuoBadge({ duo }) {
         >×</button>
 
         <div style={{
-          position: "relative", overflow: "hidden", display: "inline-block",
-          background: style.bg, color: style.text, border: `1.5px solid ${style.border}`,
-          boxShadow: style.glow, borderRadius: 999,
-          padding: "3px 10px", fontSize: 9, fontWeight: 800, letterSpacing: ".08em",
-          textTransform: "uppercase", marginBottom: 16,
+          display: "inline-block", background: color.chipBg, color: color.chipText,
+          borderRadius: 999, padding: "3px 10px", fontSize: 9, fontWeight: 800,
+          letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 16,
         }}>
           Dynamic Duo · {tier}
-          {style.shimmer && (
-            <span style={{
-              position: "absolute", top: 0, left: 0, width: "40%", height: "100%",
-              background: "linear-gradient(115deg,transparent,rgba(255,255,255,.65),transparent)",
-              animation: "duoShimmer 2.4s ease-in-out infinite",
-            }}/>
-          )}
         </div>
 
         {/* DPs — tap either one to jump straight to that profile */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, animation: "duoAvatarsIn .35s .05s cubic-bezier(.34,1.56,.64,1) both" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18, animation: "duoAvatarsIn .35s .05s cubic-bezier(.34,1.56,.64,1) both" }}>
           <ProfileLink username={duo.me?.username}><Avatar person={duo.me} z={2} /></ProfileLink>
           <ProfileLink username={duo.partner?.username}><Avatar person={duo.partner} z={1} /></ProfileLink>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", gap: 10, animation: "duoNumIn .3s .1s both" }}>
-          <div style={{ flex: 1, background: "#f3f3ea", borderRadius: 14, padding: "12px 6px" }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{animLevel}</div>
+        <div style={{ animation: "duoNumIn .3s .1s both" }}>
+          <div style={{ background: "#f3f3ea", borderRadius: 14, padding: "14px 6px", maxWidth: 140, margin: "0 auto" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{animLevel}</div>
             <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8a8a80", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>Level</div>
-          </div>
-          <div style={{ flex: 1, background: "#f3f3ea", borderRadius: 14, padding: "12px 6px" }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: BLACK, lineHeight: 1 }}>{animDays}</div>
-            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8a8a80", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>Day{daysBonded === 1 ? "" : "s"} bonded</div>
           </div>
         </div>
 
@@ -195,26 +179,20 @@ export default function DuoBadge({ duo }) {
         aria-label={`Dynamic Duo — Level ${level}, ${tier} tier`}
         title={`Dynamic Duo — ${tier}`}
         style={{
-          position: "relative", overflow: "hidden",
-          display: "inline-flex", alignItems: "center", gap: 5,
-          background: style.bg, color: style.text, border: `2px solid ${style.border}`,
-          boxShadow: style.glow, borderRadius: 999, padding: "6px 13px",
-          fontSize: 12, fontWeight: 800, fontFamily: "'Sora', sans-serif", cursor: "pointer",
-          WebkitTapHighlightColor: "transparent", transition: "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .25s",
-          animation: style.shimmer ? "duoGlowPulse 2.6s ease-in-out infinite" : "none",
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: "#fff", color: BLACK, border: `2px solid ${BLACK}`,
+          borderRadius: 999, padding: "6px 13px", fontSize: 12, fontWeight: 800,
+          fontFamily: "'Sora', sans-serif", cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+          transition: "background .18s, transform .15s",
+          animation: "duoBadgeIn .4s cubic-bezier(.34,1.56,.64,1) both",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#f3f3ea"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
       >
-        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .8 }}/>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: color.dot, flexShrink: 0 }}/>
+        <i className="fas fa-infinity" style={{ fontSize: 10, opacity: .75 }}/>
         Lvl {level}
-        {style.shimmer && (
-          <span style={{
-            position: "absolute", top: 0, left: 0, width: "35%", height: "100%",
-            background: "linear-gradient(115deg,transparent,rgba(255,255,255,.6),transparent)",
-            animation: "duoShimmer 2.8s ease-in-out infinite",
-          }}/>
-        )}
       </button>
 
       {open && mounted && createPortal(modal, document.body)}
