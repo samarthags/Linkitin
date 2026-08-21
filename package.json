@@ -11,12 +11,8 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "mongodb": "^6.0.0"
+    "mongodb": "^6.0.0",
+    "cloudinary": "^2.5.1",
+    "motion": "^11.15.0"
   }
 }
-
-
-
-
-
-
