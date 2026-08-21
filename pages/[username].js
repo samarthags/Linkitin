@@ -2,6 +2,7 @@
 // chat, but the actual filename on disk must be exactly [username].js)
 import Head from "next/head";
 import { useState, useEffect, useRef } from "react";
+import { motion } from "motion/react";
 import clientPromise from "../lib/mongodb";
 import DuoBadge from "../components/DuoBadge";
 import ItinScoreBadge from "../components/ItinScoreBadge";
@@ -101,6 +102,22 @@ const BADGE_ICONS = {
   student:"fas fa-graduation-cap", other:"fas fa-star",
 };
 
+// ─── Motion presets (motion.dev / Framer-Motion-style spring variants) ────────
+const fadeUp = {
+  hidden:  { opacity: 0, y: 28 },
+  visible: (i = 0) => ({
+    opacity: 1, y: 0,
+    transition: { delay: i * 0.06, type: "spring", stiffness: 260, damping: 24 },
+  }),
+};
+const popSpring = {
+  hidden:  { opacity: 0, scale: 0.85 },
+  visible: (i = 0) => ({
+    opacity: 1, scale: 1,
+    transition: { delay: i * 0.05, type: "spring", stiffness: 320, damping: 18 },
+  }),
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calcAge(dob) {
   if (!dob) return null;
@@ -194,9 +211,16 @@ function ShareSheet({ url, name, onClose }) {
   ];
 
   return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(10,10,10,.55)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(6px)"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#fafaf7",border:"2px solid #0a0a0a",borderBottom:"none",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:520,paddingBottom:44,animation:"ssUp .28s cubic-bezier(.34,1.4,.64,1) both"}}>
-        <style>{`@keyframes ssUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+    <motion.div
+      onClick={onClose}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{position:"fixed",inset:0,background:"rgba(10,10,10,.55)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(6px)"}}>
+      <motion.div
+        onClick={e=>e.stopPropagation()}
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 280, damping: 30 }}
+        style={{background:"#fafaf7",border:"2px solid #0a0a0a",borderBottom:"none",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:520,paddingBottom:44}}>
         <div style={{display:"flex",justifyContent:"center",padding:"14px 0 8px"}}>
           <div style={{width:40,height:4,borderRadius:2,background:"#0a0a0a",opacity:.2}}/>
         </div>
@@ -205,22 +229,25 @@ function ShareSheet({ url, name, onClose }) {
             <div style={{fontWeight:900,fontSize:15,color:"#0a0a0a",textTransform:"uppercase",letterSpacing:".02em"}}>Share</div>
             <div style={{fontSize:11,color:"#6b6b60",marginTop:2,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{url}</div>
           </div>
-          <button onClick={onClose} style={{width:34,height:34,borderRadius:"50%",background:"#0a0a0a",border:"none",fontSize:17,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",outline:"none",WebkitTapHighlightColor:"transparent"}}>×</button>
+          <motion.button whileTap={{ scale: 0.88 }} onClick={onClose} style={{width:34,height:34,borderRadius:"50%",background:"#0a0a0a",border:"none",fontSize:17,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",outline:"none",WebkitTapHighlightColor:"transparent"}}>×</motion.button>
         </div>
         <div style={{padding:"14px 10px 0",display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center"}}>
-          {opts.map(o=>(
-            <button key={o.l} onClick={o.fn} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:72,padding:"10px 4px",border:"none",background:"transparent",cursor:"pointer",borderRadius:14,outline:"none",WebkitTapHighlightColor:"transparent",transition:"background .12s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#f0f0e8"}
-              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          {opts.map((o,i)=>(
+            <motion.button
+              key={o.l} onClick={o.fn}
+              initial="hidden" animate="visible" custom={i} variants={popSpring}
+              whileHover={{ y: -3, backgroundColor: "#f0f0e8" }}
+              whileTap={{ scale: 0.93 }}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:72,padding:"10px 4px",border:"none",background:"transparent",cursor:"pointer",borderRadius:14,outline:"none",WebkitTapHighlightColor:"transparent"}}>
               <div style={{width:52,height:52,borderRadius:14,background:o.bg,color:o.fg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:o.l==="Copy Link"?"none":"1.5px solid rgba(10,10,10,.08)"}}>
                 {o.l==="Copy Link"&&copied?<i className="fas fa-check" style={{color:"#d7ff3f"}}/>:<i className={o.ic}/>}
               </div>
               <span style={{fontSize:10.5,fontWeight:700,color:"#0a0a0a",textAlign:"center",lineHeight:1.2}}>{o.l==="Copy Link"&&copied?"Copied!":o.l}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -231,20 +258,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [loading,      setLoading]      = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
   const [duo,          setDuo]          = useState(null);
-  const [scrolled,     setScrolled]     = useState(false);
   const [contentRevealed, setContentRevealed] = useState(false);
   const contentRef = useRef(null);
 
   useEffect(()=>{
     if (user?.username) track(user.username, "view");
   },[]);
-
-  // ── Hide the scroll-down hint once the person actually starts scrolling ──
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // ── Reveal the below-the-fold content (bio, socials, links, spotify) only
   // once it's actually scrolled into view, instead of animating it in on
@@ -526,7 +545,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
           .themed-bg{background:var(--theme-hero,#fafaf7);min-height:100vh;}
-          .soc-btn:hover{transform:translateY(-3px) scale(1.06);box-shadow:0 6px 16px rgba(10,10,10,.08);border-color:#0a0a0a;}
           .foot-cta:hover{color:#0a0a0a!important;}
 
           @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
@@ -535,32 +553,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
           @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
           @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
-          @keyframes scrollWheel{0%{transform:translateY(0);opacity:1;}70%{opacity:0;}100%{transform:translateY(14px);opacity:0;}}
-          @keyframes scrollHintIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
           .hero-screen{display:flex;flex-direction:column;align-items:stretch;padding-bottom:22px;}
-          .scroll-hint{
-            margin-top:28px;
-            display:flex;flex-direction:column;align-items:center;gap:7px;
-            background:none;border:none;cursor:pointer;
-            animation:scrollHintIn .6s 1.3s cubic-bezier(.16,1,.3,1) both;
-            transition:opacity .35s ease;
-            -webkit-tap-highlight-color:transparent;
-          }
-          .scroll-hint-mouse{
-            width:24px;height:38px;border-radius:13px;
-            background:#fff;
-            border:1.5px solid rgba(10,10,10,.35);
-            box-shadow:0 2px 8px rgba(10,10,10,.06);
-            display:flex;justify-content:center;padding-top:6px;
-          }
-          .scroll-hint span{
-            width:3.5px;height:7px;border-radius:2px;background:rgba(10,10,10,.65);
-            animation:scrollWheel 1.6s ease-in-out infinite;
-          }
-          .scroll-hint-label{
-            font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
-            color:rgba(10,10,10,.45);
-          }
           @keyframes blurReveal{from{opacity:0;filter:blur(10px);transform:translateY(14px);}to{opacity:1;filter:blur(0);transform:translateY(0);}}
           .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
           .blur-in{animation:blurReveal .7s cubic-bezier(.16,1,.3,1) both;}
@@ -580,7 +573,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
             pointer-events:none;z-index:0;
           }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(.82);animation:heroZoom 6s ease-out both;}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(.82);}
           .hero-fade{
             position:absolute;inset:0;pointer-events:none;z-index:1;
             background:linear-gradient(
@@ -650,10 +643,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           .soc-btn{
             width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
             font-size:17px;background:#fff;border:1.5px solid #e5e5da;
-            transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .18s,border-color .15s;
             position:relative;
           }
-          .soc-btn:active{transform:scale(.93);}
 
           .links-container{margin-bottom:20px;}
           .links{display:flex;flex-direction:column;gap:10px;}
@@ -661,11 +652,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             display:flex;align-items:center;width:100%;padding:13px 15px;
             background:#fff;border:1.5px solid rgba(10,10,10,.10);border-radius:18px;
             cursor:pointer;box-shadow:0 1px 3px rgba(10,10,10,.045);
-            transition:transform .32s cubic-bezier(.16,1,.3,1),box-shadow .32s cubic-bezier(.16,1,.3,1),border-color .22s,background .22s;
           }
-          .lbtn:hover{background:#f8fbe8;border-color:rgba(10,10,10,.26);box-shadow:0 12px 28px rgba(10,10,10,.10);transform:translateY(-3px);}
-          .lbtn:active{transform:translateY(-1px) scale(.99);}
-          .lbtn:active{background:#f0f0e5;}
           .lbtn-ic-wrap{width:50px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
           .lbtn-ic{width:50px;height:50px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;color:#0a0a0a;background:#f3f3ea;border:1.5px solid #e5e5da;flex-shrink:0;}
           .lbtn-t{flex:1;font-size:14px;font-weight:700;color:#0a0a0a;padding:0 12px;letter-spacing:-.01em;}
@@ -699,11 +686,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             border:1.5px solid rgba(10,10,10,.12);
             display:flex;align-items:center;justify-content:center;
             font-size:16px;color:#0a0a0a;cursor:pointer;z-index:80;
-            transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s;
             box-shadow:0 2px 10px rgba(10,10,10,.06);
           }
-          .sfab:hover{transform:translateY(-2px) scale(1.05);background:rgba(255,255,255,.78);}
-          .sfab:active{transform:scale(.93);}
 
           @media(max-width:420px){
             .hero{height:48vh;}
@@ -731,9 +715,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
             .hero{height:58vh;max-height:520px;border-radius:0 0 44px 44px;box-shadow:0 24px 60px rgba(10,10,10,.10);}
             .content{max-width:640px;padding:26px 24px 96px;}
             .pname{font-size:clamp(38px,5vw,56px);}
-            .lbtn:hover{transform:translateY(-3px);}
-            .lbtn{transition:background .22s,box-shadow .32s cubic-bezier(.16,1,.3,1),transform .32s cubic-bezier(.16,1,.3,1),border-color .22s;}
-            .soc-btn:hover{transform:translateY(-4px) scale(1.08);}
           }
         `}</style>
       </Head>
@@ -749,24 +730,31 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         backgroundSize:"22px 22px",
       }}/>
 
-      {/* ── Share FAB (Apple-style) ── */}
-      <button className={`sfab${reveal("s-fab")}`} onClick={()=>{
-        setShareOpen(true);
-        track(user.username,"share");
-      }} aria-label="Share">
+      {/* ── Share FAB (Apple-style, Motion spring press) ── */}
+      <motion.button
+        className={`sfab${reveal("s-fab")}`}
+        whileHover={{ scale: 1.06, y: -2, backgroundColor: "rgba(255,255,255,.78)" }}
+        whileTap={{ scale: 0.92 }}
+        onClick={()=>{
+          setShareOpen(true);
+          track(user.username,"share");
+        }} aria-label="Share">
         <i className="fas fa-arrow-up-from-bracket"/>
-      </button>
+      </motion.button>
 
       {/* ── HERO SCREEN — photo, name, badges. Fills the first viewport;
           everything else waits below the fold until scrolled into view. ── */}
       <div className="hero-screen">
         {user.avatar ? (
           <div className="hero">
-            <img
+            <motion.img
               src={user.avatar}
               alt={`${user.name}'s profile photo`}
               className="hero-img"
               fetchpriority="high"
+              initial={{ scale: 1.12 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
             />
             <div className="hero-fade"/>
           </div>
@@ -782,7 +770,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <div className="badge-row">
             {/* Age pill — click to toggle between age and birthday */}
             {userAge && user.dob && (
-              <span className={reveal("bp")} style={{animationDelay:"0s"}}>
+              <motion.span
+                initial="hidden" animate={!loading ? "visible" : "hidden"} custom={0} variants={popSpring}
+              >
                 <span
                   key={showBirthday ? "bday" : "age"}
                   className="age-pill agePop"
@@ -794,16 +784,18 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                     ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                     : `${userAge} y/o`}
                 </span>
-              </span>
+              </motion.span>
             )}
             {/* Advanced badge pill */}
             {badgeLabel && (
-              <span className={reveal("bp")} style={{animationDelay:".06s"}}>
+              <motion.span
+                initial="hidden" animate={!loading ? "visible" : "hidden"} custom={1} variants={popSpring}
+              >
                 <span className="badge-pill">
                   {badgeIcon && <i className={badgeIcon}/>}
                   {badgeLabel}
                 </span>
-              </span>
+              </motion.span>
             )}
             {/* Itin score — compact, tap for full tier breakdown. Animates itself
                 in the instant its score arrives, so it's never "late". Works
@@ -819,50 +811,41 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               badges over a big empty gap */}
           {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".1s", marginBottom:0}}>{bio}</p>}
         </div>
-
-        {/* Scroll hint — sits right below the bio. Tap or scroll to reveal the rest. */}
-        {!loading && (
-          <button
-            type="button"
-            className="scroll-hint"
-            style={{opacity: scrolled ? 0 : 1}}
-            aria-label="Scroll down for more"
-            onClick={() => {
-              document.querySelector(".content")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            <div className="scroll-hint-mouse"><span/></div>
-            <span className="scroll-hint-label">Scroll</span>
-          </button>
-        )}
       </div>
 
       {/* ── CONTENT ── */}
       <div className="content" ref={contentRef}>
 
         {socials.length > 0 && (
-          <div className={`soc-row${revealScroll("s3")}`}>
+          <div className="soc-row">
             {socials.map(([pl,val],idx)=>{
               const m=PLAT[pl];
               return(
-                <a key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className={`soc-btn${revealScroll("bp")}`} title={m.n} aria-label={m.n}
-                  style={{color:m.c, animationDelay:`${idx*0.035}s`}}
+                <motion.a
+                  key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
+                  className="soc-btn" title={m.n} aria-label={m.n}
+                  style={{color:m.c}}
+                  initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={idx} variants={popSpring}
+                  whileHover={{ y: -3, scale: 1.08, boxShadow: "0 6px 16px rgba(10,10,10,.08)", borderColor: "#0a0a0a" }}
+                  whileTap={{ scale: 0.93 }}
                   onClick={()=>track(user.username, `social_${pl}`)}>
                   <i className={m.i}/>
-                </a>
+                </motion.a>
               );
             })}
           </div>
         )}
 
         {(user.links||[]).length > 0 && (
-          <div className={`links-container${revealScroll("s4")}`}>
+          <div className="links-container">
             <div className="links">
               {user.links.map((lnk,i)=>(
-                <a key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
-                  className={`lbtn${revealScroll("bp")}`}
-                  style={{animationDelay:`${i*0.05}s`}}
+                <motion.a
+                  key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
+                  className="lbtn"
+                  initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={i} variants={fadeUp}
+                  whileHover={{ y: -3, backgroundColor: "#f8fbe8", borderColor: "rgba(10,10,10,.26)", boxShadow: "0 12px 28px rgba(10,10,10,.10)" }}
+                  whileTap={{ scale: 0.99, y: -1 }}
                   aria-label={lnk.title}
                   onClick={()=>track(user.username,"link_click")}>
                   <div className="lbtn-ic-wrap">
@@ -876,7 +859,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                   </div>
                   <div className="lbtn-t">{lnk.title}</div>
                   <div className="lbtn-a"><i className="fas fa-arrow-up-right-from-square"/></div>
-                </a>
+                </motion.a>
               ))}
             </div>
           </div>
