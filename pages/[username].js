@@ -2,7 +2,15 @@
 // chat, but the actual filename on disk must be exactly [username].js)
 import Head from "next/head";
 import { useState, useEffect, useRef } from "react";
-import { motion } from "motion/react";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useSpring,
+  animate,
+} from "motion/react";
 import clientPromise from "../lib/mongodb";
 import DuoBadge from "../components/DuoBadge";
 import ItinScoreBadge from "../components/ItinScoreBadge";
@@ -118,6 +126,54 @@ const popSpring = {
   }),
 };
 
+// ─── Animated number ticker — counts up to `value` using Motion's
+// useMotionValue + animate() instead of a plain React re-render loop, so the
+// digits glide with real spring/easing instead of jumping frame to frame. ──
+function AnimatedCounter({ value, formatter, className, style }) {
+  const mv = useMotionValue(0);
+  const [display, setDisplay] = useState(formatter ? formatter(0) : "0");
+
+  useEffect(() => {
+    const controls = animate(mv, value, {
+      duration: 1.1,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setDisplay(formatter ? formatter(Math.round(v)) : Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [value]);
+
+  return <span className={className} style={style}>{display}</span>;
+}
+
+// ─── Magnetic hover wrapper — the child drifts toward the cursor within a
+// small radius using spring-smoothed motion values, then snaps back on
+// leave. Used to give the share FAB an "alive" desktop feel. ──
+function Magnetic({ children, strength = 0.35 }) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { stiffness: 220, damping: 16, mass: 0.4 });
+  const sy = useSpring(y, { stiffness: 220, damping: 16, mass: 0.4 });
+
+  function onMouseMove(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    x.set((e.clientX - (r.left + r.width / 2)) * strength);
+    y.set((e.clientY - (r.top + r.height / 2)) * strength);
+  }
+  function onMouseLeave() {
+    x.set(0); y.set(0);
+  }
+
+  return (
+    <motion.div
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      style={{ x: sx, y: sy, display: "inline-block" }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calcAge(dob) {
   if (!dob) return null;
@@ -219,6 +275,7 @@ function ShareSheet({ url, name, onClose }) {
         onClick={e=>e.stopPropagation()}
         initial={{ y: "100%", opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
         transition={{ type: "spring", stiffness: 280, damping: 30 }}
         style={{background:"#fafaf7",border:"2px solid #0a0a0a",borderBottom:"none",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:520,paddingBottom:44}}>
         <div style={{display:"flex",justifyContent:"center",padding:"14px 0 8px"}}>
@@ -259,11 +316,38 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [showBirthday, setShowBirthday] = useState(false);
   const [duo,          setDuo]          = useState(null);
   const [contentRevealed, setContentRevealed] = useState(false);
+  const [viewCount, setViewCount] = useState(null);
   const contentRef = useRef(null);
+  const heroRef    = useRef(null);
 
+  // ── /api/track "view" call now also feeds a live, animated view counter.
+  // If the endpoint doesn't return a count yet, the badge just stays hidden —
+  // nothing else on the page depends on it. ──
   useEffect(()=>{
-    if (user?.username) track(user.username, "view");
+    if (!user?.username) return;
+    fetch("/api/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user.username, event: "view" }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const n = d?.views ?? d?.count ?? d?.viewCount ?? null;
+        if (typeof n === "number") setViewCount(n);
+      })
+      .catch(() => {});
   },[]);
+
+  // ── Scroll-linked hero parallax — the photo drifts and fades slightly
+  // faster than scroll speed instead of just being a static image, using
+  // Motion's useScroll/useTransform against the hero container. ──
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroParallaxY     = useTransform(heroProgress, [0, 1], [0, 90]);
+  const heroParallaxScale = useTransform(heroProgress, [0, 1], [1, 1.08]);
+  const heroParallaxFade  = useTransform(heroProgress, [0, 1], [1, 0.35]);
 
   // ── Reveal the below-the-fold content (bio, socials, links, spotify) only
   // once it's actually scrolled into view, instead of animating it in on
@@ -461,9 +545,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   // so the reveal plays as a real staggered entrance instead of everything
   // already being in its final state when the splash fades out.
   const reveal = (cls) => (!loading ? ` ${cls}` : "");
-  // Same idea as reveal(), but gated on the content section actually having
-  // scrolled into view, not on the page-load splash clearing.
-  const revealScroll = (cls) => (contentRevealed ? ` ${cls}` : "");
 
   return (
     <>
@@ -730,23 +811,28 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         backgroundSize:"22px 22px",
       }}/>
 
-      {/* ── Share FAB (Apple-style, Motion spring press) ── */}
-      <motion.button
-        className={`sfab${reveal("s-fab")}`}
-        whileHover={{ scale: 1.06, y: -2, backgroundColor: "rgba(255,255,255,.78)" }}
-        whileTap={{ scale: 0.92 }}
-        onClick={()=>{
-          setShareOpen(true);
-          track(user.username,"share");
-        }} aria-label="Share">
-        <i className="fas fa-arrow-up-from-bracket"/>
-      </motion.button>
+      {/* ── Share FAB (Apple-style, magnetic hover + Motion spring press) ── */}
+      <div style={{ position: "fixed", top: 16, right: 16, zIndex: 80 }} className={reveal("s-fab")}>
+        <Magnetic strength={0.3}>
+          <motion.button
+            className="sfab"
+            style={{ position: "static" }}
+            whileHover={{ scale: 1.06, backgroundColor: "rgba(255,255,255,.78)" }}
+            whileTap={{ scale: 0.9 }}
+            onClick={()=>{
+              setShareOpen(true);
+              track(user.username,"share");
+            }} aria-label="Share">
+            <i className="fas fa-arrow-up-from-bracket"/>
+          </motion.button>
+        </Magnetic>
+      </div>
 
       {/* ── HERO SCREEN — photo, name, badges. Fills the first viewport;
           everything else waits below the fold until scrolled into view. ── */}
-      <div className="hero-screen">
+      <div className="hero-screen" ref={heroRef}>
         {user.avatar ? (
-          <div className="hero">
+          <motion.div className="hero" style={{ opacity: heroParallaxFade }}>
             <motion.img
               src={user.avatar}
               alt={`${user.name}'s profile photo`}
@@ -755,9 +841,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
               initial={{ scale: 1.12 }}
               animate={{ scale: 1 }}
               transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ y: heroParallaxY, scale: heroParallaxScale }}
             />
             <div className="hero-fade"/>
-          </div>
+          </motion.div>
         ) : (
           <div className="hero-ph">
             <div className="av-ph">{user.name?.charAt(0)?.toUpperCase()||"?"}</div>
@@ -768,6 +855,20 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <div className={`id-block${reveal("s1")}`}>
           <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
           <div className="badge-row">
+            {/* Live view counter — animates up from 0 once /api/track responds */}
+            {viewCount !== null && (
+              <motion.span
+                initial="hidden" animate={!loading ? "visible" : "hidden"} custom={-1} variants={popSpring}
+              >
+                <span className="age-pill" style={{ cursor: "default" }} title="Profile views">
+                  <i className="fas fa-eye"/>
+                  <AnimatedCounter
+                    value={viewCount}
+                    formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)}
+                  />
+                </span>
+              </motion.span>
+            )}
             {/* Age pill — click to toggle between age and birthday */}
             {userAge && user.dob && (
               <motion.span
@@ -866,8 +967,17 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         )}
 
         {user.favSongTrackId && (
-          <div className={`sp-block${revealScroll("s5")}`}>
-            <div className="sp-card">
+          <motion.div
+            className="sp-block"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          >
+            <motion.div
+              className="sp-card"
+              whileHover={{ y: -2, boxShadow: "0 12px 28px rgba(10,10,10,.10)" }}
+            >
               <div className={`sp-trig${spOpen?" open":""}`}
                 onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
                 <div className="sp-art"><i className="fas fa-music"/></div>
@@ -893,17 +1003,25 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                   />
                 </div>
               )}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
-        <div className={`foot${revealScroll("s7")}`}>
+        <motion.div
+          className="foot"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.5 }}
+        >
           <a href="/" className="foot-cta">Create your own profile — it's free</a>
-        </div>
+        </motion.div>
 
       </div>
 
-      {shareOpen&&<ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
+      <AnimatePresence>
+        {shareOpen && <ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
+      </AnimatePresence>
     </>
   );
 }
