@@ -8,6 +8,7 @@ import {
   useScroll,
   useTransform,
   useMotionValue,
+  useMotionValueEvent,
   useSpring,
   animate,
 } from "motion/react";
@@ -174,6 +175,56 @@ function Magnetic({ children, strength = 0.35 }) {
   );
 }
 
+// ─── 3D tilt link card — rotates toward the cursor within a small range and
+// lifts on hover, giving each link button real depth instead of a flat
+// hover state. Each list item gets its own instance so the motion values
+// stay isolated per card. ──
+function TiltLink({ href, onClick, ariaLabel, children, index }) {
+  const rX = useMotionValue(0);
+  const rY = useMotionValue(0);
+  const srX = useSpring(rX, { stiffness: 260, damping: 20, mass: 0.5 });
+  const srY = useSpring(rY, { stiffness: 260, damping: 20, mass: 0.5 });
+  const lift = useMotionValue(0);
+  const sLift = useSpring(lift, { stiffness: 260, damping: 22 });
+
+  function onMouseMove(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;   // 0..1
+    const py = (e.clientY - r.top) / r.height;   // 0..1
+    rY.set((px - 0.5) * 10);   // rotateY driven by horizontal position
+    rX.set((0.5 - py) * 8);    // rotateX driven by vertical position
+  }
+  function onMouseEnter() { lift.set(-3); }
+  function onMouseLeave() { rX.set(0); rY.set(0); lift.set(0); }
+
+  return (
+    <motion.a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="lbtn"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      initial="hidden"
+      animate={index.animate}
+      custom={index.i}
+      variants={fadeUp}
+      onMouseMove={onMouseMove}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      whileTap={{ scale: 0.99 }}
+      style={{
+        rotateX: srX,
+        rotateY: srY,
+        y: sLift,
+        transformPerspective: 700,
+      }}
+    >
+      {children}
+    </motion.a>
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calcAge(dob) {
   if (!dob) return null;
@@ -238,6 +289,36 @@ function LoadingScreen({ visible }) {
   );
 }
 
+// ─── Sparkle burst — a handful of lime particles fired outward from the
+// copy button on success, then removed. Purely decorative, no deps beyond
+// Motion's own exit-animation support via AnimatePresence. ──
+function SparkleBurst() {
+  const particles = useRef(
+    Array.from({ length: 8 }, (_, i) => {
+      const angle = (i / 8) * Math.PI * 2;
+      return { id: i, dx: Math.cos(angle) * 34, dy: Math.sin(angle) * 34 };
+    })
+  ).current;
+
+  return (
+    <>
+      {particles.map(p => (
+        <motion.span
+          key={p.id}
+          initial={{ opacity: 1, x: 0, y: 0, scale: 0.6 }}
+          animate={{ opacity: 0, x: p.dx, y: p.dy, scale: 1 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: 5, height: 5, borderRadius: "50%",
+            background: "#d7ff3f", pointerEvents: "none",
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
 // ─── Share sheet ───────────────────────────────────────────────────────────────
 function ShareSheet({ url, name, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -296,8 +377,9 @@ function ShareSheet({ url, name, onClose }) {
               whileHover={{ y: -3, backgroundColor: "#f0f0e8" }}
               whileTap={{ scale: 0.93 }}
               style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:72,padding:"10px 4px",border:"none",background:"transparent",cursor:"pointer",borderRadius:14,outline:"none",WebkitTapHighlightColor:"transparent"}}>
-              <div style={{width:52,height:52,borderRadius:14,background:o.bg,color:o.fg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:o.l==="Copy Link"?"none":"1.5px solid rgba(10,10,10,.08)"}}>
+              <div style={{width:52,height:52,borderRadius:14,background:o.bg,color:o.fg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:o.l==="Copy Link"?"none":"1.5px solid rgba(10,10,10,.08)",position:"relative"}}>
                 {o.l==="Copy Link"&&copied?<i className="fas fa-check" style={{color:"#d7ff3f"}}/>:<i className={o.ic}/>}
+                {o.l==="Copy Link"&&<AnimatePresence>{copied&&<SparkleBurst/>}</AnimatePresence>}
               </div>
               <span style={{fontSize:10.5,fontWeight:700,color:"#0a0a0a",textAlign:"center",lineHeight:1.2}}>{o.l==="Copy Link"&&copied?"Copied!":o.l}</span>
             </motion.button>
@@ -317,6 +399,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const [duo,          setDuo]          = useState(null);
   const [contentRevealed, setContentRevealed] = useState(false);
   const [viewCount, setViewCount] = useState(null);
+  const [stickyVisible, setStickyVisible] = useState(false);
   const contentRef = useRef(null);
   const heroRef    = useRef(null);
 
@@ -348,6 +431,17 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const heroParallaxY     = useTransform(heroProgress, [0, 1], [0, 90]);
   const heroParallaxScale = useTransform(heroProgress, [0, 1], [1, 1.08]);
   const heroParallaxFade  = useTransform(heroProgress, [0, 1], [1, 0.35]);
+
+  // ── Toggle the sticky mini-header once the hero is mostly scrolled past,
+  // using Motion's useMotionValueEvent to read the value without extra
+  // re-renders from a raw scroll listener. ──
+  useMotionValueEvent(heroProgress, "change", (latest) => {
+    setStickyVisible(latest > 0.82);
+  });
+
+  // ── Page-wide scroll progress, driving the thin progress bar fixed at
+  // the very top of the viewport. ──
+  const { scrollYProgress: pageProgress } = useScroll();
 
   // ── Reveal the below-the-fold content (bio, socials, links, spotify) only
   // once it's actually scrolled into view, instead of animating it in on
@@ -625,6 +719,37 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           body{background:#fafaf7;color:#0a0a0a;font-family:'Sora',sans-serif;min-height:100vh;overflow-x:hidden;}
 
           /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
+          /* ── Scroll progress bar — thin lime line pinned to the very top ── */
+          .scroll-progress{
+            position:fixed;top:0;left:0;right:0;height:3px;
+            background:#0a0a0a;
+            transform-origin:0% 50%;
+            zIndex:120;
+          }
+
+          /* ── Sticky mini-header — appears once the hero has scrolled past ── */
+          .sticky-head{
+            position:fixed;top:0;left:0;right:0;z-index:90;
+            display:flex;align-items:center;gap:11px;
+            padding:10px 16px;
+            background:rgba(250,250,247,.82);
+            -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+            border-bottom:1.5px solid rgba(10,10,10,.08);
+          }
+          .sticky-head-av{
+            width:34px;height:34px;border-radius:50%;object-fit:cover;
+            border:1.5px solid rgba(10,10,10,.12);flex-shrink:0;
+          }
+          .sticky-head-name{
+            font-size:14px;font-weight:800;color:#0a0a0a;
+            overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
+          }
+          .sticky-head-share{
+            width:32px;height:32px;border-radius:50%;background:#0a0a0a;
+            color:var(--theme-accent,#d7ff3f);border:none;display:flex;
+            align-items:center;justify-content:center;font-size:13px;flex-shrink:0;
+          }
+
           .themed-bg{background:var(--theme-hero,#fafaf7);min-height:100vh;}
           .foot-cta:hover{color:#0a0a0a!important;}
 
@@ -803,6 +928,36 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       {/* ── LOADING SPLASH ── */}
       <LoadingScreen visible={loading} />
 
+      {/* ── Scroll progress bar ── */}
+      <motion.div className="scroll-progress" style={{ scaleX: pageProgress }} />
+
+      {/* ── Sticky mini-header — avatar, name, quick share once scrolled past hero ── */}
+      <AnimatePresence>
+        {stickyVisible && (
+          <motion.div
+            className="sticky-head"
+            initial={{ y: -60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -60, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 30 }}
+          >
+            {user.avatar
+              ? <img src={user.avatar} alt="" className="sticky-head-av" />
+              : <div className="sticky-head-av" style={{background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",color:"#d7ff3f",fontWeight:800,fontSize:13}}>{user.name?.charAt(0)?.toUpperCase()||"?"}</div>}
+            <span className="sticky-head-name">{user.name}</span>
+            <motion.button
+              className="sticky-head-share"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={()=>{ setShareOpen(true); track(user.username,"share"); }}
+              aria-label="Share"
+            >
+              <i className="fas fa-arrow-up-from-bracket"/>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Theme background overlay + subtle dot-grid texture for depth ── */}
       <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.35,pointerEvents:"none"}}/>
       <div style={{
@@ -941,14 +1096,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <div className="links-container">
             <div className="links">
               {user.links.map((lnk,i)=>(
-                <motion.a
-                  key={lnk.id||i} href={lnk.url} target="_blank" rel="noopener noreferrer"
-                  className="lbtn"
-                  initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={i} variants={fadeUp}
-                  whileHover={{ y: -3, backgroundColor: "#f8fbe8", borderColor: "rgba(10,10,10,.26)", boxShadow: "0 12px 28px rgba(10,10,10,.10)" }}
-                  whileTap={{ scale: 0.99, y: -1 }}
-                  aria-label={lnk.title}
-                  onClick={()=>track(user.username,"link_click")}>
+                <TiltLink
+                  key={lnk.id||i}
+                  href={lnk.url}
+                  ariaLabel={lnk.title}
+                  index={{ animate: contentRevealed ? "visible" : "hidden", i }}
+                  onClick={()=>track(user.username,"link_click")}
+                >
                   <div className="lbtn-ic-wrap">
                     <div className="lbtn-ic">
                       {(lnk.icon?.startsWith("https://") || lnk.icon?.startsWith("data:"))
@@ -960,7 +1114,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
                   </div>
                   <div className="lbtn-t">{lnk.title}</div>
                   <div className="lbtn-a"><i className="fas fa-arrow-up-right-from-square"/></div>
-                </motion.a>
+                </TiltLink>
               ))}
             </div>
           </div>
