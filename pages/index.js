@@ -647,8 +647,8 @@ export default function Landing() {
               Create Your Profile — It's Free
             </a>
             <p className="btn-note">
-              A free, independent student project by{" "}
-              <a href={AUTHOR_URL} target="_blank" rel="noopener noreferrer">Samartha GS</a>
+              A free, independent student project
+
             </p>
           </div>
 
