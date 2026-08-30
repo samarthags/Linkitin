@@ -72,16 +72,22 @@ export default function Landing() {
     "@type": "Person",
     "name": "Samartha GS",
     "url": AUTHOR_URL,
+    "image": "https://samarthags.in/me.png",
     "jobTitle": "Full Stack Web Developer",
     "description": "Student and full-stack web developer from Sagara, building independent web projects including Linkitin.",
-    "alumniOf": "Student",
     "sameAs": [
       "https://www.linkedin.com/in/samarthags",
       "https://github.com/samarthags",
       AUTHOR_URL
     ],
     "knowsAbout": ["Web Development", "Full Stack Development", "Next.js", "React", "SEO"],
-    "worksFor": { "@type": "Organization", "name": "Linkitin", "url": SITE_URL }
+    "hasOccupation": {
+      "@type": "Occupation",
+      "name": "Full Stack Web Developer",
+      "skills": "Next.js, React, JavaScript, SEO, Web Application Development"
+    },
+    "worksFor": { "@type": "Organization", "name": "Linkitin", "url": SITE_URL },
+    "mainEntityOfPage": AUTHOR_URL
   };
 
   const jsonLd = [
@@ -93,7 +99,14 @@ export default function Landing() {
       "url": SITE_URL,
       "description": "Create your personal link-in-bio profile page. Add your photo, professional badge, socials, Spotify song and an AI-written bio — all at one URL.",
       "applicationCategory": "SocialNetworkingApplication",
+      "applicationSubCategory": "Link in Bio Tool",
       "operatingSystem": "Web",
+      "browserRequirements": "Requires a modern web browser",
+      "inLanguage": "en",
+      "isAccessibleForFree": true,
+      "featureList": features.map(f => f.title),
+      "screenshot": OG_IMAGE,
+      "mainEntityOfPage": SITE_URL,
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "author":  { "@type": "Person", "name": "Samartha GS", "url": AUTHOR_URL },
       "creator": { "@type": "Person", "name": "Samartha GS", "url": AUTHOR_URL },
@@ -105,6 +118,26 @@ export default function Landing() {
         "founder": { "@type": "Person", "name": "Samartha GS", "url": AUTHOR_URL }
       },
     },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Linkitin",
+      "url": SITE_URL,
+      "description": "Linkitin — a free link in bio profile builder with AI bio writing, Spotify pinning and profile badges.",
+      "publisher": { "@type": "Organization", "name": "Linkitin", "url": SITE_URL },
+      "inLanguage": "en"
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Linkitin Features",
+      "itemListElement": features.map((f, i) => ({
+        "@type": "ListItem",
+        "position": i + 1,
+        "name": f.title,
+        "description": f.desc
+      }))
+    },
     personSchema,
     {
       "@context": "https://schema.org",
@@ -113,6 +146,17 @@ export default function Landing() {
         "@type": "Question",
         "name": f.q,
         "acceptedAnswer": { "@type": "Answer", "text": f.a }
+      }))
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to create a Linkitin profile",
+      "description": "Set up your free Linkitin link in bio page in three steps.",
+      "step": steps.map(s => ({
+        "@type": "HowToStep",
+        "name": s.t,
+        "text": s.d
       }))
     },
     {
@@ -130,8 +174,16 @@ export default function Landing() {
       <Head>
         <title>Linkitin — Free Link in Bio | Create Your Profile Page</title>
         <meta name="description" content="Create your free link in bio profile page. Add your photo, badge, social links, Spotify song and AI-written bio — all at one URL. Built by Samartha GS." />
-        <meta name="keywords" content="link in bio, free link in bio, linktree alternative, bio link page, personal profile page, linkitin, Linkitin, instagram bio link, link in bio tool, AI bio generator, spotify profile link, Samartha GS" />
+        <meta name="keywords" content="link in bio, free link in bio, linktree alternative, bio link page, personal profile page, linkitin, Linkitin, instagram bio link, link in bio tool, AI bio generator, spotify profile link, Samartha GS, Samartha GS Sagara, full stack developer Sagara, samarthags.in" />
         <meta name="author"        content="Samartha GS" />
+        <link rel="author" href={AUTHOR_URL} />
+        <meta name="creator"       content="Samartha GS" />
+        <meta name="publisher"     content="Linkitin" />
+        <meta name="rating"        content="general" />
+        <meta name="distribution"  content="global" />
+        <meta name="coverage"      content="Worldwide" />
+        <meta name="geo.region"    content="IN-KA" />
+        <meta name="geo.placename" content="Sagara, Karnataka, India" />
         <meta name="robots"        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="googlebot"     content="index, follow" />
         <meta name="viewport"      content="width=device-width, initial-scale=1" />
@@ -158,7 +210,9 @@ export default function Landing() {
         <meta property="og:image:width"  content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt"    content="Linkitin — Create your free link in bio page" />
+        <meta property="og:image:type"   content="image/png" />
         <meta property="og:locale"       content="en_US" />
+        <meta property="article:author"  content={AUTHOR_URL} />
 
         <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:site"        content="@linkitin" />
