@@ -241,6 +241,24 @@ function track(username, event) {
   }).catch(()=>{});
 }
 
+// Truncate helper for meta title/description so tags stay within
+// search-engine-friendly lengths without cutting mid-word where avoidable.
+function truncate(str, max) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim() + "…";
+}
+
+// Safely stringify JSON-LD: JSON.stringify already escapes quotes, but we
+// also neutralize "<" so a value like "</script><script>" in user-entered
+// profile data can never break out of the surrounding <script> tag.
+function safeJsonLd(obj) {
+  return JSON.stringify(obj).replace(/</g, "\\u003c");
+}
+
 // ─── Loading Screen ────────────────────────────────────────────────────────────
 function LoadingScreen({ visible }) {
   return (
@@ -391,7 +409,7 @@ function ShareSheet({ url, name, onClose }) {
 }
 
 // ─── Profile page ─────────────────────────────────────────────────────────────
-export default function ProfilePage({ user, pageUrl, avatarUrl }) {
+export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsContent, isIndexable }) {
   const [shareOpen,    setShareOpen]    = useState(false);
   const [spOpen,       setSpOpen]       = useState(false);
   const [loading,      setLoading]      = useState(true);
@@ -523,17 +541,22 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
   const badge     = user?.interests?.role;
   const badgeIcon = badge && BADGE_ICONS[badge];
   const badgeLabel= badge ? badge.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase()) : null;
+  const origin    = siteUrl || (pageUrl ? pageUrl.split("/").slice(0,3).join("/") : "https://linkitin.site");
+  const websiteId = `${origin}/#website`;
+  const orgId     = `${origin}/#organization`;
 
-  const richDesc = user
+  // Natural, non-invented description built only from real profile fields.
+  const richDescFull = user
     ? [
-        badgeLabel ? `${user.name} — ${badgeLabel}` : user.name,
-        bio ? bio.slice(0, 120) : null,
-        socials.length ? `Find ${user.name} on ${socials.slice(0,3).map(([k])=>PLAT[k].n).join(", ")}` : null,
-        `Linkitin profile`,
-      ].filter(Boolean).join(". ")
+        badgeLabel ? `${user.name} — ${badgeLabel}.` : null,
+        bio ? bio : null,
+        !bio ? `Explore ${user.name}'s links, social profiles and online presence on Linkitin.` : (socials.length ? `Find ${user.name} on ${socials.slice(0,3).map(([k])=>PLAT[k].n).join(", ")}.` : null),
+      ].filter(Boolean).join(" ")
     : "Profile not found on Linkitin";
 
-  const ptitle    = user ? `${user.name} (@${user.username}) | Linkitin` : "Not Found | Linkitin";
+  const richDesc = user ? truncate(richDescFull, 155) : richDescFull;
+
+  const ptitle    = user ? truncate(`${user.name} — Links, Socials & Profile | Linkitin`, 60) : "Profile Not Found | Linkitin";
   const keywords  = user
     ? [
         user.name, user.username, "linkitin",
@@ -544,22 +567,35 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     : "linkitin, profile";
 
   const sameAsUrls = socials.map(([k,v]) => PLAT[k].u(v)).filter(u => !u.startsWith("mailto:"));
-  const jsonLd = user ? [
+
+  // Structured data is only emitted for indexable, real profiles — keeping
+  // noindexed/incomplete pages free of signals that would contradict the
+  // robots directive.
+  const jsonLd = (user && isIndexable) ? [
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "@id": `${pageUrl.split("/").slice(0,3).join("/")}/#website`,
+      "@id": websiteId,
       "name": "Linkitin",
-      "url": pageUrl.split("/").slice(0,3).join("/"),
+      "url": origin,
       "description": "Create your free link-in-bio profile on Linkitin",
+      "publisher": { "@id": orgId },
       "potentialAction": {
         "@type": "SearchAction",
         "target": {
           "@type": "EntryPoint",
-          "urlTemplate": `${pageUrl.split("/").slice(0,3).join("/")}/{search_term_string}`
+          "urlTemplate": `${origin}/{search_term_string}`
         },
         "query-input": "required name=search_term_string"
       }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": orgId,
+      "name": "Linkitin",
+      "url": origin,
+      "logo": `${origin}/icon.png`
     },
     {
       "@context": "https://schema.org",
@@ -569,14 +605,19 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       "url": pageUrl,
       "description": richDesc,
       "dateModified": new Date().toISOString(),
-      "breadcrumb": {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Linkitin", "item": pageUrl.split("/").slice(0,3).join("/") },
-          { "@type": "ListItem", "position": 2, "name": user.name, "item": pageUrl }
-        ]
-      },
+      "isPartOf": { "@id": websiteId },
+      "publisher": { "@id": orgId },
+      "breadcrumb": { "@id": `${pageUrl}#breadcrumb` },
       "mainEntity": { "@id": `${pageUrl}#person` }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "@id": `${pageUrl}#breadcrumb`,
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Linkitin", "item": origin },
+        { "@type": "ListItem", "position": 2, "name": user.name, "item": pageUrl }
+      ]
     },
     {
       "@context": "https://schema.org",
@@ -597,6 +638,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
       ...(sameAsUrls.length ? { "sameAs": sameAsUrls } : {}),
       ...(interests.length ? { "knowsAbout": interests } : {}),
       "mainEntityOfPage": { "@id": `${pageUrl}#profilepage` },
+      "subjectOf": { "@id": websiteId },
     }
   ] : null;
 
@@ -604,7 +646,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
     return (
       <>
         <Head>
-          <title>Not Found | Linkitin</title>
+          <title>Profile Not Found | Linkitin</title>
           <link rel="icon" href="/icon.png" type="image/png" />
           <meta name="robots" content="noindex, nofollow"/>
           <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -612,7 +654,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
           <style>{`*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Sora',sans-serif;background:#fafaf7;color:#0a0a0a;min-height:100vh;display:flex;align-items:center;justify-content:center;}`}</style>
         </Head>
-        <div style={{textAlign:"center",padding:32}}>
+        <main style={{textAlign:"center",padding:32}}>
           <div style={{width:80,height:80,borderRadius:"50%",background:"#0a0a0a",border:"none",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:32,color:"#d7ff3f"}}>
             <i className="fas fa-user-slash"/>
           </div>
@@ -624,7 +666,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           <div style={{marginTop:40,fontSize:12,color:"#b0b0a0",fontWeight:600}}>
             Developed by <strong style={{color:"#6b6b60"}}>Samartha Gs</strong>
           </div>
-        </div>
+        </main>
       </>
     );
   }
@@ -648,8 +690,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta name="description"    content={richDesc}/>
         <meta name="keywords"       content={keywords}/>
         <meta name="author"         content={user.name}/>
-        <meta name="robots"         content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
-        <meta name="googlebot"      content="index, follow, max-image-preview:large, max-snippet:-1"/>
+        <meta name="robots"         content={robotsContent}/>
+        <meta name="googlebot"      content={robotsContent}/>
         <link rel="canonical"       href={pageUrl}/>
 
         {/* ── Viewport / Theme / PWA hints ── */}
@@ -670,8 +712,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta property="og:url"               content={pageUrl}/>
         <meta property="og:site_name"         content="Linkitin"/>
         <meta property="og:locale"            content="en_US"/>
-        <meta property="og:image"             content={avatarUrl}/>
-        <meta property="og:image:secure_url"  content={avatarUrl}/>
+        <meta property="og:image"             content={avatarUrl || `${origin}/og-image.png`}/>
+        <meta property="og:image:secure_url"  content={avatarUrl || `${origin}/og-image.png`}/>
         <meta property="og:image:width"       content="400"/>
         <meta property="og:image:height"      content="400"/>
         <meta property="og:image:type"        content="image/jpeg"/>
@@ -683,7 +725,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         <meta name="twitter:site"        content="@linkitin"/>
         <meta name="twitter:title"       content={ptitle}/>
         <meta name="twitter:description" content={richDesc}/>
-        <meta name="twitter:image"       content={avatarUrl}/>
+        <meta name="twitter:image"       content={avatarUrl || `${origin}/og-image.png`}/>
         <meta name="twitter:image:alt"   content={`${user.name}'s profile photo`}/>
         {user.socialProfiles?.twitter &&
           <meta name="twitter:creator" content={`@${user.socialProfiles.twitter.replace("@","")}`}/>}
@@ -691,12 +733,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         {/* ── Article / Author signal ── */}
         <meta property="article:author" content={pageUrl}/>
 
-        {/* ── JSON-LD Structured Data ── */}
+        {/* ── JSON-LD Structured Data (safely escaped, only when indexable) ── */}
         {jsonLd && jsonLd.map((schema, i) => (
           <script
             key={i}
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+            dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
           />
         ))}
 
@@ -717,6 +759,14 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
           *{-webkit-tap-highlight-color:transparent;}
           a,button{outline:none;text-decoration:none;color:inherit;}
           body{background:#fafaf7;color:#0a0a0a;font-family:'Sora',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+          /* ── Visually-hidden but crawlable — used for the breadcrumb nav so
+             assistive tech and search engines get real internal links
+             without changing the visual design. ── */
+          .sr-only{
+            position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+            overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+          }
 
           /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
           /* ── Scroll progress bar — thin lime line pinned to the very top ── */
@@ -883,6 +933,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 
           .foot{text-align:center;padding:8px 0 4px;}
           .foot-cta{font-size:12px;color:#8a8a7c;font-weight:700;letter-spacing:.02em;}
+          .foot-attrib{font-size:10.5px;color:#b0b0a0;font-weight:600;margin-top:6px;}
+          .foot-attrib a{color:#8a8a7c;text-decoration:underline;text-underline-offset:2px;}
 
           /* ── Share FAB — Apple-style: transparent glass, minimal, outlined icon ── */
           .sfab{
@@ -983,195 +1035,207 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
         </Magnetic>
       </div>
 
-      {/* ── HERO SCREEN — photo, name, badges. Fills the first viewport;
-          everything else waits below the fold until scrolled into view. ── */}
-      <div className="hero-screen" ref={heroRef}>
-        {user.avatar ? (
-          <motion.div className="hero" style={{ opacity: heroParallaxFade }}>
-            <motion.img
-              src={user.avatar}
-              alt={`${user.name}'s profile photo`}
-              className="hero-img"
-              fetchpriority="high"
-              initial={{ scale: 1.12 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-              style={{ y: heroParallaxY, scale: heroParallaxScale }}
-            />
-            <div className="hero-fade"/>
-          </motion.div>
-        ) : (
-          <div className="hero-ph">
-            <div className="av-ph">{user.name?.charAt(0)?.toUpperCase()||"?"}</div>
-          </div>
-        )}
+      <main id="profile-main">
+        {/* ── Crawlable breadcrumb: real HTML links, visually hidden.
+            Backs up the BreadcrumbList structured data with actual markup,
+            and gives every profile page an internal link back to Home. ── */}
+        <nav aria-label="Breadcrumb" className="sr-only">
+          <a href={origin}>Home</a> › <span aria-current="page">{user.name}</span>
+        </nav>
 
-        {/* ── Identity ── */}
-        <div className={`id-block${reveal("s1")}`}>
-          <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
-          <div className="badge-row">
-            {/* Live view counter — animates up from 0 once /api/track responds */}
-            {viewCount !== null && (
-              <motion.span
-                initial="hidden" animate={!loading ? "visible" : "hidden"} custom={-1} variants={popSpring}
-              >
-                <span className="age-pill" style={{ cursor: "default" }} title="Profile views">
-                  <i className="fas fa-eye"/>
-                  <AnimatedCounter
-                    value={viewCount}
-                    formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)}
-                  />
-                </span>
-              </motion.span>
-            )}
-            {/* Age pill — click to toggle between age and birthday */}
-            {userAge && user.dob && (
-              <motion.span
-                initial="hidden" animate={!loading ? "visible" : "hidden"} custom={0} variants={popSpring}
-              >
-                <span
-                  key={showBirthday ? "bday" : "age"}
-                  className="age-pill agePop"
-                  onClick={() => setShowBirthday(v => !v)}
-                  title={showBirthday ? "Show age" : "Show birthday"}
+        {/* ── HERO SCREEN — photo, name, badges. Fills the first viewport;
+            everything else waits below the fold until scrolled into view. ── */}
+        <header className="hero-screen" ref={heroRef}>
+          {user.avatar ? (
+            <motion.div className="hero" style={{ opacity: heroParallaxFade }}>
+              <motion.img
+                src={user.avatar}
+                alt={`${user.name} profile photo`}
+                className="hero-img"
+                fetchpriority="high"
+                initial={{ scale: 1.12 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                style={{ y: heroParallaxY, scale: heroParallaxScale }}
+              />
+              <div className="hero-fade"/>
+            </motion.div>
+          ) : (
+            <div className="hero-ph">
+              <div className="av-ph">{user.name?.charAt(0)?.toUpperCase()||"?"}</div>
+            </div>
+          )}
+
+          {/* ── Identity ── */}
+          <div className={`id-block${reveal("s1")}`}>
+            <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
+            <div className="badge-row">
+              {/* Live view counter — animates up from 0 once /api/track responds */}
+              {viewCount !== null && (
+                <motion.span
+                  initial="hidden" animate={!loading ? "visible" : "hidden"} custom={-1} variants={popSpring}
                 >
-                  <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
-                  {showBirthday
-                    ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                    : `${userAge} y/o`}
-                </span>
-              </motion.span>
-            )}
-            {/* Advanced badge pill */}
-            {badgeLabel && (
-              <motion.span
-                initial="hidden" animate={!loading ? "visible" : "hidden"} custom={1} variants={popSpring}
-              >
-                <span className="badge-pill">
-                  {badgeIcon && <i className={badgeIcon}/>}
-                  {badgeLabel}
-                </span>
-              </motion.span>
-            )}
-            {/* Itin score — compact, tap for full tier breakdown. Animates itself
-                in the instant its score arrives, so it's never "late". Works
-                for any profile: fetches live by user.username, nothing hardcoded. */}
-            <ItinScoreBadge username={user.username} />
-            {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
-            {duo && (
-              <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-            )}
-          </div>
-
-          {/* About-me text lives on the first screen too, so it isn't just
-              badges over a big empty gap */}
-          {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".1s", marginBottom:0}}>{bio}</p>}
-        </div>
-      </div>
-
-      {/* ── CONTENT ── */}
-      <div className="content" ref={contentRef}>
-
-        {socials.length > 0 && (
-          <div className="soc-row">
-            {socials.map(([pl,val],idx)=>{
-              const m=PLAT[pl];
-              return(
-                <motion.a
-                  key={pl} href={m.u(val)} target="_blank" rel="noopener noreferrer"
-                  className="soc-btn" title={m.n} aria-label={m.n}
-                  style={{color:m.c}}
-                  initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={idx} variants={popSpring}
-                  whileHover={{ y: -3, scale: 1.08, boxShadow: "0 6px 16px rgba(10,10,10,.08)", borderColor: "#0a0a0a" }}
-                  whileTap={{ scale: 0.93 }}
-                  onClick={()=>track(user.username, `social_${pl}`)}>
-                  <i className={m.i}/>
-                </motion.a>
-              );
-            })}
-          </div>
-        )}
-
-        {(user.links||[]).length > 0 && (
-          <div className="links-container">
-            <div className="links">
-              {user.links.map((lnk,i)=>(
-                <TiltLink
-                  key={lnk.id||i}
-                  href={lnk.url}
-                  ariaLabel={lnk.title}
-                  index={{ animate: contentRevealed ? "visible" : "hidden", i }}
-                  onClick={()=>track(user.username,"link_click")}
+                  <span className="age-pill" style={{ cursor: "default" }} title="Profile views">
+                    <i className="fas fa-eye"/>
+                    <AnimatedCounter
+                      value={viewCount}
+                      formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)}
+                    />
+                  </span>
+                </motion.span>
+              )}
+              {/* Age pill — click to toggle between age and birthday */}
+              {userAge && user.dob && (
+                <motion.span
+                  initial="hidden" animate={!loading ? "visible" : "hidden"} custom={0} variants={popSpring}
                 >
-                  <div className="lbtn-ic-wrap">
-                    <div className="lbtn-ic">
-                      {(lnk.icon?.startsWith("https://") || lnk.icon?.startsWith("data:"))
-                        ? <img src={lnk.icon} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",borderRadius:"10px"}} alt=""/>
-                        : lnk.icon?.startsWith("fas ") || lnk.icon?.startsWith("fab ")
-                          ? <i className={lnk.icon}/>
-                          : <span style={{fontSize:17}}>{lnk.icon||"🔗"}</span>}
+                  <span
+                    key={showBirthday ? "bday" : "age"}
+                    className="age-pill agePop"
+                    onClick={() => setShowBirthday(v => !v)}
+                    title={showBirthday ? "Show age" : "Show birthday"}
+                  >
+                    <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
+                    {showBirthday
+                      ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      : `${userAge} y/o`}
+                  </span>
+                </motion.span>
+              )}
+              {/* Advanced badge pill */}
+              {badgeLabel && (
+                <motion.span
+                  initial="hidden" animate={!loading ? "visible" : "hidden"} custom={1} variants={popSpring}
+                >
+                  <span className="badge-pill">
+                    {badgeIcon && <i className={badgeIcon}/>}
+                    {badgeLabel}
+                  </span>
+                </motion.span>
+              )}
+              {/* Itin score — compact, tap for full tier breakdown. Animates itself
+                  in the instant its score arrives, so it's never "late". Works
+                  for any profile: fetches live by user.username, nothing hardcoded. */}
+              <ItinScoreBadge username={user.username} />
+              {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
+              {duo && (
+                <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
+              )}
+            </div>
+
+            {/* About-me text lives on the first screen too, so it isn't just
+                badges over a big empty gap */}
+            {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".1s", marginBottom:0}}>{bio}</p>}
+          </div>
+        </header>
+
+        {/* ── CONTENT ── */}
+        <div className="content" ref={contentRef}>
+          <article>
+            {socials.length > 0 && (
+              <section className="soc-row" aria-label={`${user.name}'s social profiles`}>
+                {socials.map(([pl,val],idx)=>{
+                  const m=PLAT[pl];
+                  return(
+                    <motion.a
+                      key={pl} href={m.u(val)} target="_blank" rel="me noopener noreferrer"
+                      className="soc-btn" title={m.n} aria-label={`${user.name} on ${m.n}`}
+                      style={{color:m.c}}
+                      initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={idx} variants={popSpring}
+                      whileHover={{ y: -3, scale: 1.08, boxShadow: "0 6px 16px rgba(10,10,10,.08)", borderColor: "#0a0a0a" }}
+                      whileTap={{ scale: 0.93 }}
+                      onClick={()=>track(user.username, `social_${pl}`)}>
+                      <i className={m.i}/>
+                    </motion.a>
+                  );
+                })}
+              </section>
+            )}
+
+            {(user.links||[]).length > 0 && (
+              <section className="links-container" aria-label={`${user.name}'s links`}>
+                <div className="links">
+                  {user.links.map((lnk,i)=>(
+                    <TiltLink
+                      key={lnk.id||i}
+                      href={lnk.url}
+                      ariaLabel={lnk.title}
+                      index={{ animate: contentRevealed ? "visible" : "hidden", i }}
+                      onClick={()=>track(user.username,"link_click")}
+                    >
+                      <div className="lbtn-ic-wrap">
+                        <div className="lbtn-ic">
+                          {(lnk.icon?.startsWith("https://") || lnk.icon?.startsWith("data:"))
+                            ? <img src={lnk.icon} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",borderRadius:"10px"}} alt="" loading="lazy"/>
+                            : lnk.icon?.startsWith("fas ") || lnk.icon?.startsWith("fab ")
+                              ? <i className={lnk.icon}/>
+                              : <span style={{fontSize:17}}>{lnk.icon||"🔗"}</span>}
+                        </div>
+                      </div>
+                      <div className="lbtn-t">{lnk.title}</div>
+                      <div className="lbtn-a"><i className="fas fa-arrow-up-right-from-square"/></div>
+                    </TiltLink>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {user.favSongTrackId && (
+              <motion.div
+                className="sp-block"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              >
+                <motion.div
+                  className="sp-card"
+                  whileHover={{ y: -2, boxShadow: "0 12px 28px rgba(10,10,10,.10)" }}
+                >
+                  <div className={`sp-trig${spOpen?" open":""}`}
+                    onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
+                    <div className="sp-art"><i className="fas fa-music"/></div>
+                    <div className="sp-meta">
+                      <div className="sp-eye"><span className="sp-dot"/>Favourite one</div>
+                      <div className="sp-title">{user.favSong||"My Favourite Song"}</div>
+                      {user.favArtist&&<div className="sp-artist">{user.favArtist}</div>}
+                    </div>
+                    <div className="sp-right">
+                      <div className="sp-play-btn">
+                        <i className={spOpen?"fas fa-chevron-up":"fas fa-play"} style={{marginLeft:spOpen?0:2}}/>
+                      </div>
                     </div>
                   </div>
-                  <div className="lbtn-t">{lnk.title}</div>
-                  <div className="lbtn-a"><i className="fas fa-arrow-up-right-from-square"/></div>
-                </TiltLink>
-              ))}
-            </div>
-          </div>
-        )}
+                  {spOpen&&(
+                    <div className="sp-embed">
+                      <iframe
+                        src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0&autoplay=1`}
+                        width="100%" height="380" frameBorder="0"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy" style={{display:"block",width:"100%",maxWidth:"100%"}}
+                        title={`${user.favSong || "Favourite Song"} by ${user.favArtist || "Artist"}`}
+                      />
+                    </div>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+          </article>
 
-        {user.favSongTrackId && (
-          <motion.div
-            className="sp-block"
-            initial={{ opacity: 0, y: 24 }}
+          <motion.footer
+            className="foot"
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.5 }}
           >
-            <motion.div
-              className="sp-card"
-              whileHover={{ y: -2, boxShadow: "0 12px 28px rgba(10,10,10,.10)" }}
-            >
-              <div className={`sp-trig${spOpen?" open":""}`}
-                onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
-                <div className="sp-art"><i className="fas fa-music"/></div>
-                <div className="sp-meta">
-                  <div className="sp-eye"><span className="sp-dot"/>Favourite one</div>
-                  <div className="sp-title">{user.favSong||"My Favourite Song"}</div>
-                  {user.favArtist&&<div className="sp-artist">{user.favArtist}</div>}
-                </div>
-                <div className="sp-right">
-                  <div className="sp-play-btn">
-                    <i className={spOpen?"fas fa-chevron-up":"fas fa-play"} style={{marginLeft:spOpen?0:2}}/>
-                  </div>
-                </div>
-              </div>
-              {spOpen&&(
-                <div className="sp-embed">
-                  <iframe
-                    src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0&autoplay=1`}
-                    width="100%" height="380" frameBorder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy" style={{display:"block",width:"100%",maxWidth:"100%"}}
-                    title={`${user.favSong || "Favourite Song"} by ${user.favArtist || "Artist"}`}
-                  />
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-
-        <motion.div
-          className="foot"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.5 }}
-        >
-          <a href="/" className="foot-cta">Create your own profile — it's free</a>
-        </motion.div>
-
-      </div>
+            <a href="/" className="foot-cta">Create your own profile — it's free</a>
+            <div className="foot-attrib">
+              Profile created with Linkitin — <a href={origin}>linkitin.site</a>
+            </div>
+          </motion.footer>
+        </div>
+      </main>
 
       <AnimatePresence>
         {shareOpen && <ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
@@ -1181,22 +1245,27 @@ export default function ProfilePage({ user, pageUrl, avatarUrl }) {
 }
 
 // ─── SSR ──────────────────────────────────────────────────────────────────────
-export async function getServerSideProps({ params, req }) {
+export async function getServerSideProps({ params, req, res }) {
+  const host    = req.headers.host || "linkitin.site";
+  const proto   = host.startsWith("localhost") ? "http" : "https";
+  const base    = `${proto}://${host}`;
+  const usernameParam = String(params.username || "").toLowerCase();
+  const pageUrl = `${base}/${usernameParam}`;
+
   try {
     const client = await clientPromise;
     const db     = client.db(process.env.DB_NAME);
     const raw    = await db.collection("users").findOne(
-      { username: params.username.toLowerCase() },
+      { username: usernameParam },
       { projection: { _id: 0 } }
     );
 
-    const host    = req.headers.host || "linkitin.site";
-    const proto   = host.startsWith("localhost") ? "http" : "https";
-    const base    = `${proto}://${host}`;
-    const pageUrl = `${base}/${params.username.toLowerCase()}`;
-
     if (!raw) {
-      return { props: { user: null, pageUrl, avatarUrl: `${base}/api/avatar/${params.username.toLowerCase()}` } };
+      // Nonexistent username: return real HTTP 404 instead of a fake 200
+      // for a page that renders "not found" content — search engines
+      // should never treat this URL as a valid page to index.
+      if (res) res.statusCode = 404;
+      return { props: { user: null, pageUrl, avatarUrl: `${base}/api/avatar/${usernameParam}`, siteUrl: base, robotsContent: "noindex, nofollow", isIndexable: false } };
     }
 
     // ── Migrate any legacy base64 blobs to Cloudinary on first view ──────────
@@ -1240,15 +1309,43 @@ export async function getServerSideProps({ params, req }) {
       }
     }
 
-    const avatarUrl = safeAvatar || `${base}/api/avatar/${params.username.toLowerCase()}`;
+    const avatarUrl = safeAvatar || `${base}/api/avatar/${usernameParam}`;
+
+    // ── Indexability logic ────────────────────────────────────────────────
+    // Only flag a profile non-indexable when the data explicitly says so
+    // (private/deleted/suspended flags, or a recognized status string), or
+    // when the profile is too thin to be useful search content (no name,
+    // no bio, no links, no socials — nothing for a searcher to land on).
+    // Fields that don't exist on a given document simply default to "public".
+    const statusStr   = raw.status ? String(raw.status).toLowerCase() : "";
+    const isDeleted    = !!raw.deleted || statusStr === "deleted";
+    const isSuspended  = !!raw.suspended || statusStr === "suspended" || statusStr === "banned";
+    const isPrivate    = !!raw.isPrivate || !!raw.private || raw.public === false || statusStr === "private";
+    const hasAnyContent = !!(raw.name) && (
+      !!(raw.bio || raw.aboutme) ||
+      (Array.isArray(raw.links) && raw.links.length > 0) ||
+      (raw.socialProfiles && Object.values(raw.socialProfiles).some(v => v && String(v).trim()))
+    );
+
+    const isIndexable = !isDeleted && !isSuspended && !isPrivate && hasAnyContent;
+
+    if (isDeleted && res) res.statusCode = 410; // Gone
+    // Private/suspended/incomplete profiles still render normally (owner can
+    // view their own page) but are told not to be indexed.
+    const robotsContent = isIndexable
+      ? "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+      : "noindex, nofollow";
 
     return {
       props: {
         pageUrl,
         avatarUrl,
+        siteUrl: base,
+        robotsContent,
+        isIndexable,
         user: JSON.parse(JSON.stringify({
-          username:       raw.username       || "",
-          name:           raw.name           || "",
+          username:       raw.username       || usernameParam,
+          name:           raw.name           || raw.username || usernameParam,
           dob:            raw.dob            || null,
           bio:            raw.bio            || "",
           aboutme:        raw.aboutme        || "",
@@ -1264,9 +1361,7 @@ export async function getServerSideProps({ params, req }) {
     };
   } catch(e) {
     console.error("[username page]", e);
-    const host  = req?.headers?.host || "linkitin.site";
-    const proto = host.startsWith("localhost") ? "http" : "https";
-    const base  = `${proto}://${host}`;
-    return { props: { user: null, pageUrl: `${base}/${params.username}`, avatarUrl: `${base}/api/avatar/${params.username}` } };
+    if (res) res.statusCode = 500;
+    return { props: { user: null, pageUrl, avatarUrl: `${base}/api/avatar/${usernameParam}`, siteUrl: base, robotsContent: "noindex, nofollow", isIndexable: false } };
   }
 }
