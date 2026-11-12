@@ -1,7 +1,6 @@
-// pages/[username].js — save as [username].js (GitHub can't show brackets in
-// chat, but the actual filename on disk must be exactly [username].js)
+// pages/[username].js — the filename on disk must be exactly [username].js
 import Head from "next/head";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   motion,
   AnimatePresence,
@@ -9,11 +8,12 @@ import {
   useTransform,
   useMotionValue,
   useMotionValueEvent,
+  useMotionTemplate,
   useSpring,
+  useReducedMotion,
   animate,
 } from "motion/react";
 import clientPromise from "../lib/mongodb";
-import DuoBadge from "../components/DuoBadge";
 import ItinScoreBadge from "../components/ItinScoreBadge";
 
 // ─── Cloudinary upload helper ─────────────────────────────────────────────────
@@ -111,32 +111,95 @@ const BADGE_ICONS = {
   student:"fas fa-graduation-cap", other:"fas fa-star",
 };
 
-// ─── Motion presets (motion.dev / Framer-Motion-style spring variants) ────────
+// ─── Motion presets ───────────────────────────────────────────────────────────
 const fadeUp = {
-  hidden:  { opacity: 0, y: 28 },
+  hidden:  { opacity: 0, y: 26, filter: "blur(6px)" },
   visible: (i = 0) => ({
-    opacity: 1, y: 0,
-    transition: { delay: i * 0.06, type: "spring", stiffness: 260, damping: 24 },
+    opacity: 1, y: 0, filter: "blur(0px)",
+    transition: { delay: i * 0.07, type: "spring", stiffness: 240, damping: 24 },
   }),
 };
 const popSpring = {
-  hidden:  { opacity: 0, scale: 0.85 },
+  hidden:  { opacity: 0, scale: 0.8 },
   visible: (i = 0) => ({
     opacity: 1, scale: 1,
-    transition: { delay: i * 0.05, type: "spring", stiffness: 320, damping: 18 },
+    transition: { delay: i * 0.06, type: "spring", stiffness: 320, damping: 18 },
   }),
 };
 
-// ─── Animated number ticker — counts up to `value` using Motion's
-// useMotionValue + animate() instead of a plain React re-render loop, so the
-// digits glide with real spring/easing instead of jumping frame to frame. ──
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function calcAge(dob) {
+  if (!dob) return null;
+  const t = new Date(), b = new Date(dob);
+  let a = t.getFullYear() - b.getFullYear();
+  if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
+  return a > 0 ? a : null;
+}
+
+function track(username, event) {
+  fetch("/api/track", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ username, event }),
+  }).catch(()=>{});
+}
+
+function truncate(str, max) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim() + "…";
+}
+
+// JSON.stringify already escapes quotes; "<" is neutralized so user-entered
+// data can never break out of the surrounding <script> tag.
+function safeJsonLd(obj) {
+  return JSON.stringify(obj).replace(/</g, "\\u003c");
+}
+
+function hostOf(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch (_) { return ""; }
+}
+
+function prettyLabel(s) {
+  return String(s).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+// Builds a .vcf file so visitors can save the person straight to their contacts.
+function downloadVCard(user, pageUrl) {
+  const sp = user.socialProfiles || {};
+  const lines = [
+    "BEGIN:VCARD",
+    "VERSION:3.0",
+    `FN:${user.name}`,
+    `N:;${user.name};;;`,
+    `URL:${pageUrl}`,
+  ];
+  if (sp.email?.trim())    lines.push(`EMAIL:${sp.email.trim()}`);
+  if (sp.whatsapp?.trim()) lines.push(`TEL;TYPE=CELL:${sp.whatsapp.trim()}`);
+  const note = user.aboutme || user.bio;
+  if (note) lines.push(`NOTE:${String(note).replace(/\r?\n/g, " ").replace(/[,;]/g, " ")}`);
+  if (user.dob) lines.push(`BDAY:${user.dob}`);
+  lines.push("END:VCARD");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/vcard" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${user.username || "contact"}.vcf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+// ─── Animated number ticker ───────────────────────────────────────────────────
 function AnimatedCounter({ value, formatter, className, style }) {
   const mv = useMotionValue(0);
   const [display, setDisplay] = useState(formatter ? formatter(0) : "0");
 
   useEffect(() => {
     const controls = animate(mv, value, {
-      duration: 1.1,
+      duration: 1.2,
       ease: [0.16, 1, 0.3, 1],
       onUpdate: (v) => setDisplay(formatter ? formatter(Math.round(v)) : Math.round(v)),
     });
@@ -146,9 +209,7 @@ function AnimatedCounter({ value, formatter, className, style }) {
   return <span className={className} style={style}>{display}</span>;
 }
 
-// ─── Magnetic hover wrapper — the child drifts toward the cursor within a
-// small radius using spring-smoothed motion values, then snaps back on
-// leave. Used to give the share FAB an "alive" desktop feel. ──
+// ─── Magnetic hover wrapper ───────────────────────────────────────────────────
 function Magnetic({ children, strength = 0.35 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -160,9 +221,7 @@ function Magnetic({ children, strength = 0.35 }) {
     x.set((e.clientX - (r.left + r.width / 2)) * strength);
     y.set((e.clientY - (r.top + r.height / 2)) * strength);
   }
-  function onMouseLeave() {
-    x.set(0); y.set(0);
-  }
+  function onMouseLeave() { x.set(0); y.set(0); }
 
   return (
     <motion.div
@@ -175,10 +234,52 @@ function Magnetic({ children, strength = 0.35 }) {
   );
 }
 
-// ─── 3D tilt link card — rotates toward the cursor within a small range and
-// lifts on hover, giving each link button real depth instead of a flat
-// hover state. Each list item gets its own instance so the motion values
-// stay isolated per card. ──
+// ─── Split-letter name reveal — letters rise out of a mask one by one ────────
+function SplitName({ text, start }) {
+  const words = String(text).split(" ");
+  let n = 0;
+  return (
+    <>
+      {words.map((w, wi) => (
+        <span key={wi} className="sw" aria-hidden="true">
+          {w.split("").map((ch, ci) => {
+            const d = 0.15 + (n++) * 0.04;
+            return (
+              <motion.span
+                key={ci}
+                className="sc"
+                initial={{ y: "115%", rotate: 6, opacity: 0 }}
+                animate={start ? { y: "0%", rotate: 0, opacity: 1 } : { y: "115%", rotate: 6, opacity: 0 }}
+                transition={{ delay: d, type: "spring", stiffness: 200, damping: 20 }}
+              >
+                {ch}
+              </motion.span>
+            );
+          })}
+        </span>
+      ))}
+    </>
+  );
+}
+
+// ─── Infinite marquee of interests (auto-pauses on hover) ────────────────────
+function Marquee({ items }) {
+  if (!items.length) return null;
+  const row = [...items, ...items];
+  return (
+    <div className="marquee" aria-label="Interests">
+      <div className="marquee-track">
+        {row.map((t, i) => (
+          <span className="marquee-chip" key={i} aria-hidden={i >= items.length}>
+            <i className="fas fa-sparkles" /> {t}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Spotlight + 3D tilt link card — border glow follows the cursor ──────────
 function TiltLink({ href, onClick, ariaLabel, children, index }) {
   const rX = useMotionValue(0);
   const rY = useMotionValue(0);
@@ -188,11 +289,14 @@ function TiltLink({ href, onClick, ariaLabel, children, index }) {
   const sLift = useSpring(lift, { stiffness: 260, damping: 22 });
 
   function onMouseMove(e) {
-    const r = e.currentTarget.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;   // 0..1
-    const py = (e.clientY - r.top) / r.height;   // 0..1
-    rY.set((px - 0.5) * 10);   // rotateY driven by horizontal position
-    rX.set((0.5 - py) * 8);    // rotateX driven by vertical position
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    rY.set((px - 0.5) * 8);
+    rX.set((0.5 - py) * 6);
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--my", `${e.clientY - r.top}px`);
   }
   function onMouseEnter() { lift.set(-3); }
   function onMouseLeave() { rX.set(0); rY.set(0); lift.set(0); }
@@ -212,104 +316,43 @@ function TiltLink({ href, onClick, ariaLabel, children, index }) {
       onMouseMove={onMouseMove}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      whileTap={{ scale: 0.99 }}
-      style={{
-        rotateX: srX,
-        rotateY: srY,
-        y: sLift,
-        transformPerspective: 700,
-      }}
+      whileTap={{ scale: 0.985 }}
+      style={{ rotateX: srX, rotateY: srY, y: sLift, transformPerspective: 800 }}
     >
+      <span className="lbtn-glow" aria-hidden="true" />
       {children}
     </motion.a>
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function calcAge(dob) {
-  if (!dob) return null;
-  const t = new Date(), b = new Date(dob);
-  let a = t.getFullYear() - b.getFullYear();
-  if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
-  return a > 0 ? a : null;
-}
-
-function track(username, event) {
-  fetch("/api/track", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ username, event }),
-  }).catch(()=>{});
-}
-
-// Truncate helper for meta title/description so tags stay within
-// search-engine-friendly lengths without cutting mid-word where avoidable.
-function truncate(str, max) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (s.length <= max) return s;
-  const cut = s.slice(0, max - 1);
-  const lastSpace = cut.lastIndexOf(" ");
-  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim() + "…";
-}
-
-// Safely stringify JSON-LD: JSON.stringify already escapes quotes, but we
-// also neutralize "<" so a value like "</script><script>" in user-entered
-// profile data can never break out of the surrounding <script> tag.
-function safeJsonLd(obj) {
-  return JSON.stringify(obj).replace(/</g, "\\u003c");
-}
-
-// ─── Loading Screen ────────────────────────────────────────────────────────────
+// ─── Loading Screen ───────────────────────────────────────────────────────────
 function LoadingScreen({ visible }) {
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        background: "#fafaf7",
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
+        position: "fixed", inset: 0, background: "#fafaf7", zIndex: 9999,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
         transition: "opacity 0.45s ease, visibility 0.45s ease",
-        opacity: visible ? 1 : 0,
-        visibility: visible ? "visible" : "hidden",
+        opacity: visible ? 1 : 0, visibility: visible ? "visible" : "hidden",
         pointerEvents: visible ? "all" : "none",
       }}
     >
       <style>{`
         @keyframes lsDots {
-          0%,80%,100% { opacity: 0.15; transform: translateY(0) scale(1); }
+          0%,80%,100% { opacity: .15; transform: translateY(0) scale(1); }
           40% { opacity: 1; transform: translateY(-6px) scale(1.15); }
         }
-        .ls-dots {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .ls-dots span {
-          display: inline-block;
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #0a0a0a;
-          animation: lsDots 1.3s ease-in-out infinite;
-        }
-        .ls-dots span:nth-child(2) { animation-delay: .18s; }
-        .ls-dots span:nth-child(3) { animation-delay: .36s; }
+        .ls-dots{display:flex;align-items:center;gap:8px;}
+        .ls-dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0a0a0a;animation:lsDots 1.3s ease-in-out infinite;}
+        .ls-dots span:nth-child(2){animation-delay:.18s;}
+        .ls-dots span:nth-child(3){animation-delay:.36s;}
       `}</style>
-      <div className="ls-dots">
-        <span /><span /><span />
-      </div>
+      <div className="ls-dots"><span /><span /><span /></div>
     </div>
   );
 }
 
-// ─── Sparkle burst — a handful of lime particles fired outward from the
-// copy button on success, then removed. Purely decorative, no deps beyond
-// Motion's own exit-animation support via AnimatePresence. ──
+// ─── Sparkle burst (copy button) ──────────────────────────────────────────────
 function SparkleBurst() {
   const particles = useRef(
     Array.from({ length: 8 }, (_, i) => {
@@ -326,21 +369,47 @@ function SparkleBurst() {
           initial={{ opacity: 1, x: 0, y: 0, scale: 0.6 }}
           animate={{ opacity: 0, x: p.dx, y: p.dy, scale: 1 }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            position: "absolute", top: "50%", left: "50%",
-            width: 5, height: 5, borderRadius: "50%",
-            background: "#d7ff3f", pointerEvents: "none",
-          }}
+          style={{ position:"absolute", top:"50%", left:"50%", width:5, height:5, borderRadius:"50%", background:"#d7ff3f", pointerEvents:"none" }}
         />
       ))}
     </>
   );
 }
 
-// ─── Share sheet ───────────────────────────────────────────────────────────────
-function ShareSheet({ url, name, onClose }) {
+// ─── Birthday confetti ────────────────────────────────────────────────────────
+function Confetti() {
+  const pieces = useRef(
+    Array.from({ length: 46 }, (_, i) => ({
+      id: i,
+      x: (Math.random() - 0.5) * 360,
+      y: -(120 + Math.random() * 280),
+      r: Math.random() * 540 - 270,
+      c: ["#d7ff3f", "#0a0a0a", "#ff5c8a", "#4cc9f0", "#ffd166"][i % 5],
+      w: 6 + Math.random() * 6,
+      d: Math.random() * 0.25,
+    }))
+  ).current;
+  return (
+    <div style={{ position:"fixed", left:"50%", top:"55%", zIndex:200, pointerEvents:"none" }} aria-hidden="true">
+      {pieces.map(p => (
+        <motion.span
+          key={p.id}
+          initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+          animate={{ x: p.x, y: [0, p.y, p.y + 520], opacity: [1, 1, 0], rotate: p.r }}
+          transition={{ duration: 2.4, delay: p.d, ease: "easeOut", times: [0, 0.35, 1] }}
+          style={{ position:"absolute", width:p.w, height:p.w * 0.5, background:p.c, borderRadius:2 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Share sheet (bottom sheet on phones, centered card on desktop) ──────────
+function ShareSheet({ url, name, onClose, onCopied }) {
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const enc = encodeURIComponent;
+
   async function doCopy() {
     try { await navigator.clipboard.writeText(url); }
     catch (_) {
@@ -348,16 +417,18 @@ function ShareSheet({ url, name, onClose }) {
       el.style.cssText="position:fixed;opacity:0;"; document.body.appendChild(el);
       el.select(); document.execCommand("copy"); document.body.removeChild(el);
     }
-    setCopied(true); setTimeout(()=>setCopied(false),2200);
+    setCopied(true); onCopied && onCopied("Link copied");
+    setTimeout(()=>setCopied(false),2200);
   }
 
   const opts = [
     {l:"Copy Link", ic:"fas fa-copy",          bg:"#0a0a0a",fg:"#d7ff3f",fn:doCopy},
+    {l:"QR Code",   ic:"fas fa-qrcode",        bg:"#f3f3f0",fg:"#0a0a0a",fn:()=>setShowQr(v=>!v)},
     {l:"WhatsApp",  ic:"fab fa-whatsapp",       bg:"#f2fdf5",fg:"#25D366",fn:()=>window.open(`https://wa.me/?text=${enc("Visit "+name+"'s Profile: "+url)}`)},
     {l:"Instagram", ic:"fab fa-instagram",      bg:"#fef2f5",fg:"#E4405F",fn:()=>window.open(`https://www.instagram.com/?url=${enc(url)}`)},
     {l:"Snapchat",  ic:"fab fa-snapchat",       bg:"#fffce8",fg:"#c9a800",fn:()=>window.open(`https://www.snapchat.com/scan?attachmentUrl=${enc(url)}`)},
     {l:"Telegram",  ic:"fab fa-telegram",       bg:"#eef8fd",fg:"#26A5E4",fn:()=>window.open(`https://t.me/share/url?url=${enc(url)}&text=${enc("Visit "+name+"'s Profile!")}`)},
-    {l:"Twitter",   ic:"fab fa-x-twitter",      bg:"#f3f3f0", fg:"#0a0a0a",fn:()=>window.open(`https://twitter.com/intent/tweet?text=${enc("Visit "+name+"'s Profile! "+url)}`)},
+    {l:"Twitter",   ic:"fab fa-x-twitter",      bg:"#f3f3f0",fg:"#0a0a0a",fn:()=>window.open(`https://twitter.com/intent/tweet?text=${enc("Visit "+name+"'s Profile! "+url)}`)},
     {l:"Facebook",  ic:"fab fa-facebook-f",     bg:"#eef4ff",fg:"#1877F2",fn:()=>window.open(`https://facebook.com/sharer/sharer.php?u=${enc(url)}`)},
     {l:"LinkedIn",  ic:"fab fa-linkedin-in",    bg:"#e8f3fc",fg:"#0A66C2",fn:()=>window.open(`https://linkedin.com/sharing/share-offsite/?url=${enc(url)}&summary=${enc("Visit "+name+"'s Profile!")}`)},
     {l:"Reddit",    ic:"fab fa-reddit-alien",   bg:"#fff2ed",fg:"#FF4500",fn:()=>window.open(`https://reddit.com/submit?url=${enc(url)}&title=${enc("Visit "+name+"'s Profile!")}`)},
@@ -367,39 +438,59 @@ function ShareSheet({ url, name, onClose }) {
 
   return (
     <motion.div
+      className="sheet-wrap"
       onClick={onClose}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{position:"fixed",inset:0,background:"rgba(10,10,10,.55)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(6px)"}}>
+    >
       <motion.div
+        className="sheet"
         onClick={e=>e.stopPropagation()}
-        initial={{ y: "100%", opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
-        transition={{ type: "spring", stiffness: 280, damping: 30 }}
-        style={{background:"#fafaf7",border:"2px solid #0a0a0a",borderBottom:"none",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:520,paddingBottom:44}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"14px 0 8px"}}>
-          <div style={{width:40,height:4,borderRadius:2,background:"#0a0a0a",opacity:.2}}/>
-        </div>
-        <div style={{padding:"8px 20px 14px",borderBottom:"1.5px solid #eae8dd",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontWeight:900,fontSize:15,color:"#0a0a0a",textTransform:"uppercase",letterSpacing:".02em"}}>Share</div>
-            <div style={{fontSize:11,color:"#6b6b60",marginTop:2,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{url}</div>
+        initial={{ y: 80, opacity: 0, scale: 0.97 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 80, opacity: 0, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        role="dialog" aria-label="Share profile"
+      >
+        <div className="sheet-grab"><div/></div>
+        <div className="sheet-head">
+          <div style={{minWidth:0}}>
+            <div className="sheet-title">Share</div>
+            <div className="sheet-url">{url}</div>
           </div>
-          <motion.button whileTap={{ scale: 0.88 }} onClick={onClose} style={{width:34,height:34,borderRadius:"50%",background:"#0a0a0a",border:"none",fontSize:17,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",outline:"none",WebkitTapHighlightColor:"transparent"}}>×</motion.button>
+          <motion.button whileTap={{ scale: 0.88 }} whileHover={{ rotate: 90 }} onClick={onClose} className="sheet-x" aria-label="Close">×</motion.button>
         </div>
-        <div style={{padding:"14px 10px 0",display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center"}}>
+
+        <AnimatePresence initial={false}>
+          {showQr && (
+            <motion.div
+              key="qr"
+              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              style={{ overflow: "hidden" }}
+            >
+              <div className="qr-box">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${enc(url)}`}
+                  alt={`QR code for ${name}'s profile`} width={170} height={170}
+                />
+                <span>Scan to open {name}'s profile</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="sheet-grid">
           {opts.map((o,i)=>(
             <motion.button
               key={o.l} onClick={o.fn}
               initial="hidden" animate="visible" custom={i} variants={popSpring}
-              whileHover={{ y: -3, backgroundColor: "#f0f0e8" }}
-              whileTap={{ scale: 0.93 }}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:72,padding:"10px 4px",border:"none",background:"transparent",cursor:"pointer",borderRadius:14,outline:"none",WebkitTapHighlightColor:"transparent"}}>
-              <div style={{width:52,height:52,borderRadius:14,background:o.bg,color:o.fg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:o.l==="Copy Link"?"none":"1.5px solid rgba(10,10,10,.08)",position:"relative"}}>
+              whileHover={{ y: -3 }} whileTap={{ scale: 0.93 }}
+              className="sheet-opt"
+            >
+              <div className="sheet-ic" style={{background:o.bg,color:o.fg}}>
                 {o.l==="Copy Link"&&copied?<i className="fas fa-check" style={{color:"#d7ff3f"}}/>:<i className={o.ic}/>}
                 {o.l==="Copy Link"&&<AnimatePresence>{copied&&<SparkleBurst/>}</AnimatePresence>}
               </div>
-              <span style={{fontSize:10.5,fontWeight:700,color:"#0a0a0a",textAlign:"center",lineHeight:1.2}}>{o.l==="Copy Link"&&copied?"Copied!":o.l}</span>
+              <span>{o.l==="Copy Link"&&copied?"Copied!":o.l}</span>
             </motion.button>
           ))}
         </div>
@@ -414,16 +505,60 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
   const [spOpen,       setSpOpen]       = useState(false);
   const [loading,      setLoading]      = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
-  const [duo,          setDuo]          = useState(null);
+  const [isBirthday,   setIsBirthday]   = useState(false);
   const [contentRevealed, setContentRevealed] = useState(false);
-  const [viewCount, setViewCount] = useState(null);
+  const [viewCount,    setViewCount]    = useState(null);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [themeMode,    setThemeMode]    = useState("light");
+  const [query,        setQuery]        = useState("");
+  const [toast,        setToast]        = useState("");
   const contentRef = useRef(null);
   const heroRef    = useRef(null);
+  const searchRef  = useRef(null);
+  const reduce     = useReducedMotion();
 
-  // ── /api/track "view" call now also feeds a live, animated view counter.
-  // If the endpoint doesn't return a count yet, the badge just stays hidden —
-  // nothing else on the page depends on it. ──
+  // ── Cursor spotlight (desktop only) ──
+  const mx = useMotionValue(-400);
+  const my = useMotionValue(-400);
+  const smx = useSpring(mx, { stiffness: 120, damping: 20, mass: 0.6 });
+  const smy = useSpring(my, { stiffness: 120, damping: 20, mass: 0.6 });
+  const spotlight = useMotionTemplate`radial-gradient(420px circle at ${smx}px ${smy}px, var(--spot), transparent 70%)`;
+
+  useEffect(() => {
+    if (!window.matchMedia("(hover:hover) and (pointer:fine)").matches) return;
+    const mv = (e) => { mx.set(e.clientX); my.set(e.clientY); };
+    window.addEventListener("mousemove", mv, { passive: true });
+    return () => window.removeEventListener("mousemove", mv);
+  }, []);
+
+  // ── Theme: remember choice, otherwise follow the visitor's system setting ──
+  useEffect(() => {
+    let saved = null;
+    try { saved = localStorage.getItem("linkitin-theme"); } catch (_) {}
+    if (saved === "dark" || saved === "light") setThemeMode(saved);
+    else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setThemeMode("dark");
+  }, []);
+
+  useEffect(() => {
+    document.body.style.background = themeMode === "dark" ? "#0b0b0a" : "#fafaf7";
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", themeMode === "dark" ? "#0b0b0a" : "#fafaf7");
+  }, [themeMode]);
+
+  const toggleTheme = useCallback(() => {
+    setThemeMode(prev => {
+      const next = prev === "dark" ? "light" : "dark";
+      try { localStorage.setItem("linkitin-theme", next); } catch (_) {}
+      return next;
+    });
+  }, []);
+
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2200);
+  }, []);
+
+  // ── View tracking + live animated counter ──
   useEffect(()=>{
     if (!user?.username) return;
     fetch("/api/track", {
@@ -439,9 +574,18 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
       .catch(() => {});
   },[]);
 
-  // ── Scroll-linked hero parallax — the photo drifts and fades slightly
-  // faster than scroll speed instead of just being a static image, using
-  // Motion's useScroll/useTransform against the hero container. ──
+  // ── Birthday check ──
+  useEffect(() => {
+    if (!user?.dob) return;
+    const t = new Date();
+    const mm = String(t.getMonth() + 1).padStart(2, "0");
+    const dd = String(t.getDate()).padStart(2, "0");
+    if (user.dob.slice(5, 10) === `${mm}-${dd}`) {
+      setIsBirthday(true);
+    }
+  }, [user?.dob]);
+
+  // ── Hero parallax ──
   const { scrollYProgress: heroProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
@@ -450,48 +594,28 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
   const heroParallaxScale = useTransform(heroProgress, [0, 1], [1, 1.08]);
   const heroParallaxFade  = useTransform(heroProgress, [0, 1], [1, 0.35]);
 
-  // ── Toggle the sticky mini-header once the hero is mostly scrolled past,
-  // using Motion's useMotionValueEvent to read the value without extra
-  // re-renders from a raw scroll listener. ──
   useMotionValueEvent(heroProgress, "change", (latest) => {
     setStickyVisible(latest > 0.82);
   });
 
-  // ── Page-wide scroll progress, driving the thin progress bar fixed at
-  // the very top of the viewport. ──
   const { scrollYProgress: pageProgress } = useScroll();
+  const progressSmooth = useSpring(pageProgress, { stiffness: 140, damping: 26, mass: 0.4 });
 
-  // ── Reveal the below-the-fold content (bio, socials, links, spotify) only
-  // once it's actually scrolled into view, instead of animating it in on
-  // page load while it's still off-screen and invisible. ──
+  // ── Reveal below-the-fold content once scrolled into view ──
   useEffect(() => {
     if (!contentRef.current || contentRevealed) return;
     const el = contentRef.current;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setContentRevealed(true);
-          io.disconnect();
-        }
+        if (entries[0]?.isIntersecting) { setContentRevealed(true); io.disconnect(); }
       },
-      { threshold: 0.08 }
+      { threshold: 0.05 }
     );
     io.observe(el);
     return () => io.disconnect();
   }, [contentRef, contentRevealed]);
 
-  // ── Dynamic Duo: fetch public duo status for this profile ──
-  useEffect(() => {
-    if (!user?.username) return;
-    fetch(`/api/duo?username=${user.username}`)
-      .then(r => r.json())
-      .then(d => setDuo(d.duo))
-      .catch(() => {});
-  }, [user?.username]);
-
-  /* ── Fixed light theme — TeenStore-inspired: cream bg, black text, muted lime accent ── */
-  const theme = { accent:"#d7ff3f", glow:"rgba(215,255,63,.10)", hero:"#fafaf7", badge:"#0a0a0a" };
-
+  // ── Preload avatar + link icons, then lift the splash ──
   useEffect(()=>{
     if (!user) { setLoading(false); return; }
 
@@ -508,35 +632,63 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
     if (user.avatar) {
       const img = new Image();
       img.src = user.avatar;
-      if (!img.complete) {
-        pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
-      }
+      if (!img.complete) pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
     }
 
     (user.links || []).forEach(lnk => {
       if (lnk.icon?.startsWith("https://")) {
         const img = new Image();
         img.src = lnk.icon;
-        if (!img.complete) {
-          pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
-        }
+        if (!img.complete) pending.push(new Promise(res => { img.onload = res; img.onerror = res; }));
       }
     });
 
     const fontReady = document.fonts ? document.fonts.ready : Promise.resolve();
-
-    Promise.all([fontReady, ...pending]).then(() => {
-      clearTimeout(safety);
-      done();
-    });
+    Promise.all([fontReady, ...pending]).then(() => { clearTimeout(safety); done(); });
 
     return () => clearTimeout(safety);
   }, [user]);
 
-  // ── SEO helpers ──────────────────────────────────────────────────────────────
+  // ── Native share on phones, custom sheet everywhere else ──
+  const openShare = useCallback(() => {
+    if (!user) return;
+    track(user.username, "share");
+    const isTouch = window.matchMedia("(pointer:coarse)").matches;
+    if (isTouch && navigator.share) {
+      navigator.share({ title: `${user.name} on Linkitin`, text: `Visit ${user.name}'s profile`, url: pageUrl })
+        .catch(() => {});
+    } else {
+      setShareOpen(true);
+    }
+  }, [user, pageUrl]);
+
+  // ── Keyboard shortcuts (desktop): S share · T theme · / search links ──
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape") { setShareOpen(false); return; }
+      if (e.key === "s" || e.key === "S") { e.preventDefault(); setShareOpen(true); if (user) track(user.username, "share"); }
+      else if (e.key === "t" || e.key === "T") { toggleTheme(); }
+      else if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [user, toggleTheme]);
+
+  // ── SEO helpers ──
   const userAge   = user ? calcAge(user.dob) : null;
   const socials   = user ? Object.entries(user.socialProfiles||{}).filter(([,v])=>v?.trim()).filter(([k])=>PLAT[k]) : [];
   const interests = user ? Object.values(user.interests||{}).flat().filter(v=>v&&typeof v==="string").slice(0,12) : [];
+  const marqueeItems = useMemo(() => {
+    if (!user) return [];
+    return Object.entries(user.interests || {})
+      .filter(([k]) => k !== "role")
+      .flatMap(([, v]) => (Array.isArray(v) ? v : [v]))
+      .filter(v => v && typeof v === "string")
+      .map(prettyLabel)
+      .slice(0, 12);
+  }, [user]);
   const bio       = user ? (user.aboutme||user.bio||"") : "";
   const badge     = user?.interests?.role;
   const badgeIcon = badge && BADGE_ICONS[badge];
@@ -545,7 +697,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
   const websiteId = `${origin}/#website`;
   const orgId     = `${origin}/#organization`;
 
-  // Natural, non-invented description built only from real profile fields.
   const richDescFull = user
     ? [
         badgeLabel ? `${user.name} — ${badgeLabel}.` : null,
@@ -555,9 +706,8 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
     : "Profile not found on Linkitin";
 
   const richDesc = user ? truncate(richDescFull, 155) : richDescFull;
-
-  const ptitle    = user ? truncate(`${user.name} — Links, Socials & Profile | Linkitin`, 60) : "Profile Not Found | Linkitin";
-  const keywords  = user
+  const ptitle   = user ? truncate(`${user.name} — Links, Socials & Profile | Linkitin`, 60) : "Profile Not Found | Linkitin";
+  const keywords = user
     ? [
         user.name, user.username, "linkitin",
         badgeLabel, "link in bio", "profile",
@@ -568,9 +718,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
 
   const sameAsUrls = socials.map(([k,v]) => PLAT[k].u(v)).filter(u => !u.startsWith("mailto:"));
 
-  // Structured data is only emitted for indexable, real profiles — keeping
-  // noindexed/incomplete pages free of signals that would contradict the
-  // robots directive.
   const jsonLd = (user && isIndexable) ? [
     {
       "@context": "https://schema.org",
@@ -582,10 +729,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
       "publisher": { "@id": orgId },
       "potentialAction": {
         "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": `${origin}/{search_term_string}`
-        },
+        "target": { "@type": "EntryPoint", "urlTemplate": `${origin}/{search_term_string}` },
         "query-input": "required name=search_term_string"
       }
     },
@@ -642,6 +786,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
     }
   ] : null;
 
+  // ── Not-found screen ──
   if (!user) {
     return (
       <>
@@ -655,12 +800,15 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
           <style>{`*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Sora',sans-serif;background:#fafaf7;color:#0a0a0a;min-height:100vh;display:flex;align-items:center;justify-content:center;}`}</style>
         </Head>
         <main style={{textAlign:"center",padding:32}}>
-          <div style={{width:80,height:80,borderRadius:"50%",background:"#0a0a0a",border:"none",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:32,color:"#d7ff3f"}}>
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 14 }}
+            style={{width:80,height:80,borderRadius:"50%",background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:32,color:"#d7ff3f"}}>
             <i className="fas fa-user-slash"/>
-          </div>
+          </motion.div>
           <h1 style={{fontSize:22,fontWeight:900,marginBottom:8,color:"#0a0a0a",textTransform:"uppercase"}}>Profile Not Found</h1>
           <p style={{color:"#6b6b60",marginBottom:28}}>This username doesn't exist yet.</p>
-          <a href="/create" style={{background:"#0a0a0a",color:"#d7ff3f",padding:"14px 30px",borderRadius:14,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,outline:"none",WebkitTapHighlightColor:"transparent",textTransform:"uppercase",letterSpacing:".03em"}}>
+          <a href="/create" style={{background:"#0a0a0a",color:"#d7ff3f",padding:"14px 30px",borderRadius:14,fontWeight:800,fontSize:14,display:"inline-flex",alignItems:"center",gap:8,textDecoration:"none",textTransform:"uppercase",letterSpacing:".03em"}}>
             <i className="fas fa-plus"/> Create Your Profile
           </a>
           <div style={{marginTop:40,fontSize:12,color:"#b0b0a0",fontWeight:600}}>
@@ -671,19 +819,15 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
     );
   }
 
-  const themeStyle = {
-    "--theme-accent": theme.accent,
-    "--theme-glow":   theme.glow,
-    "--theme-hero":   theme.hero,
-  };
-
-  // animation classes only attach once the loading splash has cleared,
-  // so the reveal plays as a real staggered entrance instead of everything
-  // already being in its final state when the splash fades out.
-  const reveal = (cls) => (!loading ? ` ${cls}` : "");
+  const links = user.links || [];
+  const filteredLinks = query.trim()
+    ? links.filter(l => `${l.title} ${hostOf(l.url)}`.toLowerCase().includes(query.trim().toLowerCase()))
+    : links;
+  const showSearch = links.length > 5;
+  const ready = !loading;
 
   return (
-    <>
+    <div className="page" data-theme={themeMode}>
       <Head>
         {/* ── Primary SEO ── */}
         <title>{ptitle}</title>
@@ -697,7 +841,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
         {/* ── Viewport / Theme / PWA hints ── */}
         <meta name="viewport"           content="width=device-width,initial-scale=1,viewport-fit=cover"/>
         <meta name="theme-color"        content="#fafaf7"/>
-        <style>{`body{--theme-accent:${theme.accent};--theme-glow:${theme.glow};}`}</style>
+        <meta name="color-scheme"       content="light dark"/>
         <meta name="mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -730,10 +874,9 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
         {user.socialProfiles?.twitter &&
           <meta name="twitter:creator" content={`@${user.socialProfiles.twitter.replace("@","")}`}/>}
 
-        {/* ── Article / Author signal ── */}
         <meta property="article:author" content={pageUrl}/>
 
-        {/* ── JSON-LD Structured Data (safely escaped, only when indexable) ── */}
+        {/* ── JSON-LD Structured Data (only when indexable) ── */}
         {jsonLd && jsonLd.map((schema, i) => (
           <script
             key={i}
@@ -742,7 +885,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
           />
         ))}
 
-        {/* ── Preconnect / Critical resource hints ── */}
+        {/* ── Resource hints ── */}
         <link rel="preconnect" href="https://fonts.googleapis.com"/>
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
         <link rel="preconnect" href="https://cdnjs.cloudflare.com"/>
@@ -751,228 +894,249 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
 
         {/* ── Fonts & Icons ── */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
-        <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@500;700&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 
         <style>{`
           *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+          html{scroll-behavior:smooth;}
           html,body{min-height:100%;-webkit-font-smoothing:antialiased;}
           *{-webkit-tap-highlight-color:transparent;}
-          a,button{outline:none;text-decoration:none;color:inherit;}
-          body{background:#fafaf7;color:#0a0a0a;font-family:'Sora',sans-serif;min-height:100vh;overflow-x:hidden;}
+          a,button{outline:none;text-decoration:none;color:inherit;font-family:inherit;}
+          a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--fg);outline-offset:3px;}
+          body{background:#fafaf7;font-family:'Sora',sans-serif;overflow-x:hidden;}
+          ::selection{background:#d7ff3f;color:#0a0a0a;}
 
-          /* ── Visually-hidden but crawlable — used for the breadcrumb nav so
-             assistive tech and search engines get real internal links
-             without changing the visual design. ── */
-          .sr-only{
-            position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-            overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+          /* ── Theme tokens ── */
+          .page{
+            --accent:#d7ff3f;
+            --bg:#fafaf7; --fg:#0a0a0a; --muted:#6b6b60; --soft:#2e2e28;
+            --card:#fff; --card-2:#f3f3ea; --border:rgba(10,10,10,.10); --border-strong:rgba(10,10,10,.28);
+            --chip:#0a0a0a; --chip-fg:#d7ff3f; --glass:rgba(255,255,255,.62);
+            --spot:rgba(215,255,63,.20); --blob-a:rgba(215,255,63,.55); --blob-b:rgba(120,200,255,.30); --blob-c:rgba(255,150,190,.22);
+            --shadow:0 1px 3px rgba(10,10,10,.05); --shadow-lg:0 18px 40px rgba(10,10,10,.12);
+            --dots:rgba(10,10,10,.045); --fade:var(--bg); --img-dim:.84;
+            position:relative;min-height:100vh;background:var(--bg);color:var(--fg);
+            transition:background .45s ease,color .45s ease;
+          }
+          .page[data-theme="dark"]{
+            --bg:#0b0b0a; --fg:#f5f5ef; --muted:#9a9a8c; --soft:#d8d8cc;
+            --card:#151514; --card-2:#1d1d1b; --border:rgba(255,255,255,.10); --border-strong:rgba(255,255,255,.3);
+            --chip:#d7ff3f; --chip-fg:#0a0a0a; --glass:rgba(24,24,22,.62);
+            --spot:rgba(215,255,63,.13); --blob-a:rgba(215,255,63,.20); --blob-b:rgba(80,140,255,.22); --blob-c:rgba(255,90,150,.16);
+            --shadow:0 1px 3px rgba(0,0,0,.4); --shadow-lg:0 18px 40px rgba(0,0,0,.5);
+            --dots:rgba(255,255,255,.05); --img-dim:.95;
           }
 
-          /* ── TeenStore-inspired light theme: cream bg, black text, muted lime accent ── */
-          /* ── Scroll progress bar — thin lime line pinned to the very top ── */
-          .scroll-progress{
-            position:fixed;top:0;left:0;right:0;height:3px;
-            background:#0a0a0a;
-            transform-origin:0% 50%;
-            zIndex:120;
-          }
+          .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 
-          /* ── Sticky mini-header — appears once the hero has scrolled past ── */
+          /* ── Background layers ── */
+          .bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+          .blob{position:absolute;border-radius:50%;filter:blur(70px);will-change:transform;}
+          .bg-dots{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(var(--dots) 1px,transparent 1px);background-size:22px 22px;}
+          .bg-spot{position:fixed;inset:0;z-index:0;pointer-events:none;}
+          @media(hover:none),(pointer:coarse){.bg-spot{display:none;}}
+
+          .scroll-progress{position:fixed;top:0;left:0;right:0;height:3px;background:var(--fg);transform-origin:0% 50%;z-index:120;}
+
+          /* ── Sticky mini-header (phones/tablets) ── */
           .sticky-head{
-            position:fixed;top:0;left:0;right:0;z-index:90;
-            display:flex;align-items:center;gap:11px;
-            padding:10px 16px;
-            background:rgba(250,250,247,.82);
-            -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
-            border-bottom:1.5px solid rgba(10,10,10,.08);
+            position:fixed;top:0;left:0;right:0;z-index:90;display:flex;align-items:center;gap:11px;
+            padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
+            background:var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+            border-bottom:1.5px solid var(--border);
           }
-          .sticky-head-av{
-            width:34px;height:34px;border-radius:50%;object-fit:cover;
-            border:1.5px solid rgba(10,10,10,.12);flex-shrink:0;
-          }
-          .sticky-head-name{
-            font-size:14px;font-weight:800;color:#0a0a0a;
-            overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
-          }
-          .sticky-head-share{
-            width:32px;height:32px;border-radius:50%;background:#0a0a0a;
-            color:var(--theme-accent,#d7ff3f);border:none;display:flex;
-            align-items:center;justify-content:center;font-size:13px;flex-shrink:0;
-          }
-
-          .themed-bg{background:var(--theme-hero,#fafaf7);min-height:100vh;}
-          .foot-cta:hover{color:#0a0a0a!important;}
-
-          @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-          @keyframes slideUp{from{opacity:0;transform:translateY(34px);}to{opacity:1;transform:translateY(0);}}
-          @keyframes popIn{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
-          @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
-          @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
-          @keyframes heroZoom{from{transform:scale(1.08);}to{transform:scale(1);}}
-          .hero-screen{display:flex;flex-direction:column;align-items:stretch;padding-bottom:22px;}
-          @keyframes blurReveal{from{opacity:0;filter:blur(10px);transform:translateY(14px);}to{opacity:1;filter:blur(0);transform:translateY(0);}}
-          .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
-          .blur-in{animation:blurReveal .7s cubic-bezier(.16,1,.3,1) both;}
-
-          .s1{animation:slideUp .58s .04s cubic-bezier(.16,1,.3,1) both;}
-          .s2{animation:slideUp .58s .16s cubic-bezier(.16,1,.3,1) both;}
-          .s3{animation:slideUp .58s .28s cubic-bezier(.16,1,.3,1) both;}
-          .s4{animation:slideUp .58s .40s cubic-bezier(.16,1,.3,1) both;}
-          .s5{animation:slideUp .58s .52s cubic-bezier(.16,1,.3,1) both;}
-          .s6{animation:slideUp .58s .64s cubic-bezier(.16,1,.3,1) both;}
-          .s7{animation:slideUp .58s .76s cubic-bezier(.16,1,.3,1) both;}
-          .s-fab{animation:popIn .5s .3s cubic-bezier(.34,1.56,.64,1) both;}
-
-          .hero{position:relative;width:100%;height:52vh;min-height:280px;max-height:440px;overflow:hidden;animation:fadeIn .8s ease both;background:#fafaf7;}
-          .hero::before{
-            content:"";position:absolute;top:-20%;right:-15%;width:60%;height:70%;
-            background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
-            pointer-events:none;z-index:0;
-          }
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(.82);}
-          .hero-fade{
-            position:absolute;inset:0;pointer-events:none;z-index:1;
-            background:linear-gradient(
-              to bottom,
-              rgba(250,250,247,0) 0%,
-              rgba(250,250,247,.04) 45%,
-              rgba(250,250,247,.22) 65%,
-              rgba(250,250,247,.62) 82%,
-              rgba(250,250,247,.94) 94%,
-              rgba(250,250,247,1) 100%
-            );
-          }
-
-          .hero-ph{width:100%;height:52vh;min-height:300px;max-height:460px;background:#fafaf7;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
-          .hero-ph::before{
-            content:"";position:absolute;top:-20%;right:-15%;width:60%;height:70%;
-            background:radial-gradient(circle,var(--theme-glow,rgba(207,233,95,.22)) 0%,rgba(207,233,95,0) 70%);
-            pointer-events:none;
-          }
-          .av-ph{width:110px;height:110px;border-radius:50%;background:#0a0a0a;border:3px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#d7ff3f;position:relative;z-index:1;}
-
-          .id-block{text-align:center;padding:0 20px 0;position:relative;z-index:2;margin-top:30px;}
-          .pname{font-size:clamp(30px,8.5vw,50px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;color:#0a0a0a;letter-spacing:-.01em;line-height:1.02;margin-bottom:10px;text-transform:uppercase;}
-          .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
-
-          /* ── Age pill — outlined, clickable, toggles age ↔ birthday ── */
-          .age-pill{
-            display:inline-flex;align-items:center;gap:5px;
-            background:#fff;
-            border:1.5px solid rgba(10,10,10,.16);
-            border-radius:999px;padding:6px 13px;
-            font-size:12px;font-weight:700;
-            color:#0a0a0a;
-            cursor:pointer;
-            box-shadow:0 1px 2px rgba(10,10,10,.03);
-            transition:background .25s cubic-bezier(.16,1,.3,1),transform .22s cubic-bezier(.34,1.56,.64,1),border-color .2s;
-            user-select:none;
-          }
-          .age-pill:hover{background:#f3f3ea;border-color:rgba(10,10,10,.3);}
-          .age-pill:active{transform:scale(.94);}
-          .age-pill i{font-size:9px;opacity:.7;}
-
-          /* ── Badge pill — solid black + muted lime, matches Duo badge ── */
-          .badge-pill{
-            display:inline-flex;align-items:center;gap:6px;
-            background:#0a0a0a;
-            border:none;
-            border-radius:999px;
-            padding:6px 14px 6px 11px;
-            font-size:12px;font-weight:800;
-            color:var(--theme-accent,#d7ff3f);
-            letter-spacing:.04em;
-            text-transform:uppercase;
-            cursor:default;
-            -webkit-tap-highlight-color:transparent;
-          }
-          .badge-pill i{ font-size:10px; color:var(--theme-accent,#d7ff3f); }
-
-          /* ── Badge row items pop in one after another, staggered by inline delay ── */
-          @keyframes badgePop{from{opacity:0;transform:translateY(6px) scale(.9);}to{opacity:1;transform:translateY(0) scale(1);}}
-          .bp{animation:badgePop .42s cubic-bezier(.34,1.56,.64,1) both;}
-
-          .content{max-width:520px;margin:0 auto;padding:18px 16px 72px;}
-          .bio-text{font-size:15px;line-height:1.7;color:#2e2e28;text-align:center;margin-bottom:24px;font-weight:400;}
-
-          .soc-row{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
-          .soc-btn{
-            width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
-            font-size:17px;background:#fff;border:1.5px solid #e5e5da;
-            position:relative;
-          }
-
-          .links-container{margin-bottom:20px;}
-          .links{display:flex;flex-direction:column;gap:10px;}
-          .lbtn{
-            display:flex;align-items:center;width:100%;padding:13px 15px;
-            background:#fff;border:1.5px solid rgba(10,10,10,.10);border-radius:18px;
-            cursor:pointer;box-shadow:0 1px 3px rgba(10,10,10,.045);
-          }
-          .lbtn-ic-wrap{width:50px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-          .lbtn-ic{width:50px;height:50px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;color:#0a0a0a;background:#f3f3ea;border:1.5px solid #e5e5da;flex-shrink:0;}
-          .lbtn-t{flex:1;font-size:14px;font-weight:700;color:#0a0a0a;padding:0 12px;letter-spacing:-.01em;}
-          .lbtn-a{font-size:10px;color:#0a0a0a;opacity:.35;transition:transform .14s;flex-shrink:0;}
-          .lbtn:hover .lbtn-a{opacity:.7;transform:translateX(2px);}
-
-          .sp-block{margin-bottom:20px;}
-          .sp-card{background:#fff;border:1.5px solid rgba(10,10,10,.10);border-radius:20px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(10,10,10,.045);transition:box-shadow .32s cubic-bezier(.16,1,.3,1),transform .32s cubic-bezier(.16,1,.3,1);}
-          .sp-card:hover{box-shadow:0 12px 28px rgba(10,10,10,.10);transform:translateY(-2px);}
-          .sp-trig{display:flex;align-items:center;gap:13px;padding:14px 16px;position:relative;}
-          .sp-trig.open{border-bottom:1.5px solid #e5e5da;}
-          .sp-art{width:50px;height:50px;border-radius:10px;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--theme-accent,#d7ff3f);flex-shrink:0;}
-          .sp-meta{flex:1;min-width:0;}
-          .sp-eye{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8a7c;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
-          .sp-dot{display:none;}
-          .sp-title{font-size:14px;font-weight:700;color:#0a0a0a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
-          .sp-artist{font-size:11.5px;color:#5c5c50;margin-top:2px;}
-          .sp-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-          .sp-play-btn{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--theme-accent,#d7ff3f);transition:transform .15s;flex-shrink:0;}
-          .sp-card:hover .sp-play-btn{transform:scale(1.08);}
-          .sp-embed{overflow:hidden;background:#fff;padding:10px 10px 0;}
-
-          .foot{text-align:center;padding:8px 0 4px;}
-          .foot-cta{font-size:12px;color:#8a8a7c;font-weight:700;letter-spacing:.02em;}
-          .foot-attrib{font-size:10.5px;color:#b0b0a0;font-weight:600;margin-top:6px;}
-          .foot-attrib a{color:#8a8a7c;text-decoration:underline;text-underline-offset:2px;}
-
-          /* ── Share FAB — Apple-style: transparent glass, minimal, outlined icon ── */
-          .sfab{
-            position:fixed;top:16px;right:16px;width:44px;height:44px;border-radius:50%;
-            background:rgba(255,255,255,.5);
+          .sticky-head-av{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex-shrink:0;}
+          .sticky-head-name{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+          .round-btn{
+            width:44px;height:44px;border-radius:50%;background:var(--glass);
             -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
-            border:1.5px solid rgba(10,10,10,.12);
-            display:flex;align-items:center;justify-content:center;
-            font-size:16px;color:#0a0a0a;cursor:pointer;z-index:80;
-            box-shadow:0 2px 10px rgba(10,10,10,.06);
+            border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;
+            font-size:16px;color:var(--fg);cursor:pointer;box-shadow:var(--shadow);
           }
+          .round-btn.sm{width:32px;height:32px;font-size:13px;background:var(--chip);color:var(--chip-fg);border:none;flex-shrink:0;}
+          .top-actions{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:100;display:flex;gap:10px;align-items:center;}
 
+          /* ── Layout shell ── */
+          .shell{position:relative;z-index:1;max-width:560px;margin:0 auto;}
+          .profile-col{display:flex;flex-direction:column;align-items:stretch;}
+
+          /* Hero */
+          .hero{position:relative;width:100%;height:54vh;min-height:300px;max-height:460px;overflow:hidden;}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(var(--img-dim));}
+          .hero-fade{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(to bottom,transparent 0%,transparent 48%,color-mix(in srgb,var(--fade) 30%,transparent) 68%,color-mix(in srgb,var(--fade) 80%,transparent) 88%,var(--fade) 100%);}
+          .hero-ph{width:100%;height:46vh;min-height:260px;max-height:400px;display:flex;align-items:center;justify-content:center;position:relative;}
+          .av-ph{width:120px;height:120px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;color:var(--chip-fg);box-shadow:0 0 0 8px var(--card-2);}
+
+          .id-block{text-align:center;padding:0 20px;position:relative;z-index:3;margin-top:-6px;}
+          .pname{font-size:clamp(34px,10vw,54px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;letter-spacing:-.015em;line-height:1.02;margin-bottom:14px;text-transform:uppercase;overflow-wrap:anywhere;}
+          .sw{display:inline-block;white-space:nowrap;overflow:hidden;padding:.06em .02em .1em;vertical-align:top;margin-right:.28em;}
+          .sw:last-child{margin-right:0;}
+          .sc{display:inline-block;will-change:transform;}
+
+          .badge-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+          .pill{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--border-strong);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;user-select:none;}
+          .pill i{font-size:10px;opacity:.7;}
+          .pill.click{cursor:pointer;transition:background .25s,transform .22s cubic-bezier(.34,1.56,.64,1);}
+          .pill.click:hover{background:var(--card-2);}
+          .pill.click:active{transform:scale(.94);}
+          .pill.mono{font-family:'JetBrains Mono',monospace;font-weight:700;}
+          .badge-pill{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:6px;background:var(--chip);border-radius:999px;padding:6px 14px 6px 11px;font-size:12px;font-weight:800;color:var(--chip-fg);letter-spacing:.04em;text-transform:uppercase;}
+          .badge-pill i{font-size:10px;}
+          .badge-pill::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);animation:sheen 3.6s 1.4s ease-in-out infinite;}
+          @keyframes sheen{0%{transform:translateX(-120%);}40%,100%{transform:translateX(120%);}}
+          .agePop{animation:agePop .28s cubic-bezier(.34,1.56,.64,1) both;}
+          @keyframes agePop{from{opacity:0;transform:translateY(-3px) scale(.92);}to{opacity:1;transform:translateY(0) scale(1);}}
+
+          .bio-text{font-size:15px;line-height:1.7;color:var(--soft);text-align:center;max-width:46ch;margin:0 auto;}
+
+          .bday-banner{margin:16px auto 0;display:inline-flex;align-items:center;gap:8px;background:var(--chip);color:var(--chip-fg);padding:8px 16px;border-radius:999px;font-size:12.5px;font-weight:800;}
+
+          /* Action buttons */
+          .actions{display:flex;gap:10px;justify-content:center;margin-top:20px;}
+          .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:14px;font-size:13px;font-weight:800;cursor:pointer;border:1.5px solid transparent;letter-spacing:.01em;}
+          .btn-primary{background:var(--chip);color:var(--chip-fg);}
+          .btn-ghost{background:var(--card);color:var(--fg);border-color:var(--border-strong);}
+
+          /* Content column */
+          .content{padding:26px 16px 72px;}
+          .section-head{display:flex;align-items:center;gap:10px;margin:2px 2px 12px;}
+          .section-title{font-family:'Archivo Black','Sora',sans-serif;font-size:15px;letter-spacing:.01em;text-transform:uppercase;}
+          .section-count{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:var(--card-2);border:1px solid var(--border);border-radius:999px;padding:2px 9px;color:var(--muted);}
+          .section-line{flex:1;height:1.5px;background:var(--border);border-radius:2px;}
+
+          .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;}
+          .stat{background:var(--card);border:1.5px solid var(--border);border-radius:18px;padding:12px 10px;text-align:center;box-shadow:var(--shadow);}
+          .stat b{display:block;font-family:'Archivo Black','Sora',sans-serif;font-size:22px;font-weight:400;line-height:1.1;}
+          .stat span{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;}
+
+          .soc-row{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin-bottom:22px;}
+          .soc-btn{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--card);border:1.5px solid var(--border);box-shadow:var(--shadow);position:relative;}
+
+          .marquee{overflow:hidden;margin:0 -16px 22px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);}
+          .marquee-track{display:flex;gap:10px;width:max-content;animation:marq 32s linear infinite;padding:2px 0;}
+          .marquee:hover .marquee-track{animation-play-state:paused;}
+          .marquee-chip{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;background:var(--card);border:1.5px solid var(--border);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;}
+          .marquee-chip i{font-size:10px;color:var(--muted);}
+          @keyframes marq{to{transform:translateX(-50%);}}
+
+          /* Link search */
+          .search{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:0 14px;margin-bottom:12px;transition:border-color .2s,box-shadow .2s;}
+          .search:focus-within{border-color:var(--fg);box-shadow:0 0 0 4px var(--spot);}
+          .search i{font-size:13px;color:var(--muted);}
+          .search input{flex:1;min-width:0;background:transparent;border:none;outline:none!important;color:var(--fg);font-size:14px;font-family:inherit;padding:13px 0;}
+          .search kbd{display:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border:1.5px solid var(--border-strong);border-radius:6px;padding:1px 7px;color:var(--muted);}
+          .empty{text-align:center;color:var(--muted);font-size:13.5px;padding:26px 10px;}
+
+          /* Link cards */
+          .links{display:flex;flex-direction:column;gap:10px;margin-bottom:22px;}
+          .lbtn{
+            position:relative;overflow:hidden;display:flex;align-items:center;width:100%;padding:12px 14px;
+            background:var(--card);border:1.5px solid var(--border);border-radius:20px;cursor:pointer;box-shadow:var(--shadow);
+            --mx:50%;--my:50%;transition:border-color .25s,box-shadow .3s;
+          }
+          .lbtn-glow{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .3s;background:radial-gradient(220px circle at var(--mx) var(--my),var(--spot),transparent 70%);}
+          .lbtn:hover{border-color:var(--border-strong);box-shadow:var(--shadow-lg);}
+          .lbtn:hover .lbtn-glow{opacity:1;}
+          .lbtn-ic{position:relative;width:50px;height:50px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--card-2);border:1.5px solid var(--border);flex-shrink:0;}
+          .lbtn-body{position:relative;flex:1;min-width:0;padding:0 12px;}
+          .lbtn-t{font-size:14.5px;font-weight:700;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+          .lbtn-h{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+          .lbtn-a{position:relative;width:30px;height:30px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:transform .3s cubic-bezier(.34,1.56,.64,1),background .25s,color .25s;}
+          .lbtn:hover .lbtn-a{background:var(--chip);color:var(--chip-fg);transform:translate(2px,-2px) rotate(8deg);}
+
+          /* Spotify */
+          .sp-block{margin-bottom:22px;}
+          .sp-card{background:var(--card);border:1.5px solid var(--border);border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow);}
+          .sp-trig{display:flex;align-items:center;gap:13px;padding:14px 16px;}
+          .sp-trig.open{border-bottom:1.5px solid var(--border);}
+          .sp-art{width:50px;height:50px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--chip-fg);flex-shrink:0;}
+          .sp-meta{flex:1;min-width:0;}
+          .sp-eye{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+          .eq{display:inline-flex;align-items:flex-end;gap:2px;height:12px;}
+          .eq i{display:block;width:3px;background:var(--fg);border-radius:2px;height:4px;}
+          .eq.on i{animation:eq 0.9s ease-in-out infinite;}
+          .eq.on i:nth-child(2){animation-delay:.15s;}
+          .eq.on i:nth-child(3){animation-delay:.3s;}
+          .eq.on i:nth-child(4){animation-delay:.45s;}
+          @keyframes eq{0%,100%{height:3px;}50%{height:12px;}}
+          .sp-title{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
+          .sp-artist{font-size:12px;color:var(--muted);margin-top:2px;}
+          .sp-play-btn{width:36px;height:36px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--chip-fg);flex-shrink:0;}
+          .sp-embed{overflow:hidden;background:var(--card);padding:10px 10px 0;}
+
+          .foot{text-align:center;padding:10px 0 4px;}
+          .foot-cta{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg);font-weight:800;border:1.5px solid var(--border-strong);border-radius:999px;padding:10px 18px;transition:background .25s,color .25s;}
+          .foot-cta:hover{background:var(--chip);color:var(--chip-fg);}
+          .foot-attrib{font-size:11px;color:var(--muted);font-weight:600;margin-top:12px;}
+          .foot-attrib a{text-decoration:underline;text-underline-offset:2px;}
+          .hints{display:none;justify-content:center;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);font-weight:600;}
+          .hints kbd{font-family:'JetBrains Mono',monospace;font-size:10.5px;border:1.5px solid var(--border-strong);border-radius:6px;padding:1px 6px;margin-right:5px;}
+
+          /* Toast */
+          .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:1200;background:var(--chip);color:var(--chip-fg);font-size:13px;font-weight:800;padding:11px 20px;border-radius:999px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg);}
+
+          /* Share sheet */
+          .sheet-wrap{position:fixed;inset:0;background:rgba(10,10,10,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+          .sheet{background:#fafaf7;color:#0a0a0a;border:2px solid #0a0a0a;border-bottom:none;border-radius:26px 26px 0 0;width:100%;max-width:520px;padding-bottom:calc(36px + env(safe-area-inset-bottom,0px));max-height:92vh;overflow-y:auto;}
+          .sheet-grab{display:flex;justify-content:center;padding:14px 0 8px;}
+          .sheet-grab div{width:40px;height:4px;border-radius:2px;background:#0a0a0a;opacity:.2;}
+          .sheet-head{padding:8px 20px 14px;border-bottom:1.5px solid #eae8dd;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+          .sheet-title{font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.02em;}
+          .sheet-url{font-size:11px;color:#6b6b60;margin-top:2px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+          .sheet-x{width:34px;height:34px;border-radius:50%;background:#0a0a0a;border:none;font-size:18px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+          .sheet-grid{padding:14px 10px 0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+          .sheet-opt{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;padding:10px 4px;border:none;background:transparent;cursor:pointer;border-radius:14px;}
+          .sheet-opt span{font-size:10.5px;font-weight:700;color:#0a0a0a;text-align:center;line-height:1.2;}
+          .sheet-ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1.5px solid rgba(10,10,10,.08);position:relative;}
+          .qr-box{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0 6px;font-size:12px;font-weight:600;color:#6b6b60;}
+          .qr-box img{border-radius:16px;border:1.5px solid #eae8dd;background:#fff;}
+
+          /* ── Phones ── */
           @media(max-width:420px){
-            .hero{height:48vh;}
-            .id-block{margin-top:22px;}
-            .pname{font-size:26px;}
-            .content{padding:10px 14px 56px;}
-            .lbtn{min-height:54px;border-radius:14px;}
-            .lbtn-t{font-size:14px;}
-            .soc-btn{width:42px;height:42px;font-size:16px;border-radius:11px;}
-            .sp-trig{padding:12px 14px;}
-            .badge-row{gap:6px;}
+            .content{padding:22px 14px 56px;}
+            .lbtn{border-radius:16px;}
+            .soc-btn{width:44px;height:44px;font-size:17px;border-radius:12px;}
+            .btn{padding:12px 16px;}
           }
 
           /* ── Tablet ── */
           @media(min-width:601px){
-            .content{max-width:580px;padding:22px 24px 84px;}
+            .shell{max-width:640px;}
+            .hero{height:52vh;}
             .bio-text{font-size:16px;}
-            .soc-btn{width:50px;height:50px;font-size:18px;}
-            .lbtn{padding:14px 16px;}
-            .lbtn-t{font-size:15px;}
+            .content{padding:26px 24px 84px;}
           }
 
-          /* ── Desktop ── */
-          @media(min-width:900px){
-            .hero{height:58vh;max-height:520px;border-radius:0 0 44px 44px;box-shadow:0 24px 60px rgba(10,10,10,.10);}
-            .content{max-width:640px;padding:26px 24px 96px;}
-            .pname{font-size:clamp(38px,5vw,56px);}
+          /* ── Laptop / desktop: two-column layout, sticky profile card ── */
+          @media(min-width:1024px){
+            .shell{max-width:1180px;display:grid;grid-template-columns:420px minmax(0,1fr);gap:44px;padding:44px 36px 40px;align-items:start;}
+            .profile-col{position:sticky;top:36px;background:var(--card);border:1.5px solid var(--border);border-radius:36px;overflow:hidden;padding-bottom:30px;box-shadow:var(--shadow-lg);--fade:var(--card);}
+            .hero{height:440px;max-height:none;min-height:0;}
+            .hero-img{border-radius:0;}
+            .hero-ph{height:300px;}
+            .id-block{margin-top:-10px;padding:0 28px;}
+            .pname{font-size:clamp(36px,3.4vw,48px);}
+            .sticky-head{display:none;}
+            .content{padding:6px 0 80px;max-width:none;}
+            .stats{grid-template-columns:repeat(3,1fr);}
+            .marquee{margin:0 0 22px;}
+            .search kbd{display:inline-block;}
+            .links{gap:12px;}
+            .lbtn{padding:14px 18px;border-radius:22px;}
+            .lbtn-ic{width:56px;height:56px;}
+            .lbtn-t{font-size:15.5px;}
+            .hints{display:flex;}
+            .sheet-wrap{align-items:center;}
+            .sheet{border-radius:28px;border-bottom:2px solid #0a0a0a;padding-bottom:28px;}
+          }
+          @media(min-width:1440px){
+            .shell{max-width:1320px;grid-template-columns:460px minmax(0,1fr);gap:56px;}
+            .hero{height:480px;}
+          }
+
+          @media(prefers-reduced-motion:reduce){
+            .marquee-track,.badge-pill::after,.eq.on i{animation:none!important;}
+            html{scroll-behavior:auto;}
           }
         `}</style>
       </Head>
@@ -980,72 +1144,82 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
       {/* ── LOADING SPLASH ── */}
       <LoadingScreen visible={loading} />
 
-      {/* ── Scroll progress bar ── */}
-      <motion.div className="scroll-progress" style={{ scaleX: pageProgress }} />
+      {/* ── Background: animated aurora + dots + cursor spotlight ── */}
+      <div className="bg-layer" aria-hidden="true">
+        {[
+          { c:"var(--blob-a)", s:420, t:"-8%",  l:"-10%", dx:[0,80,-30,0],  dy:[0,60,100,0],   d:22 },
+          { c:"var(--blob-b)", s:380, t:"30%",  l:"68%",  dx:[0,-90,40,0],  dy:[0,-50,70,0],   d:26 },
+          { c:"var(--blob-c)", s:340, t:"72%",  l:"8%",   dx:[0,60,-60,0],  dy:[0,-80,-20,0],  d:30 },
+        ].map((b, i) => (
+          <motion.div
+            key={i}
+            className="blob"
+            style={{ width:b.s, height:b.s, top:b.t, left:b.l, background:b.c }}
+            animate={reduce ? undefined : { x: b.dx, y: b.dy, scale: [1, 1.15, 0.95, 1] }}
+            transition={{ duration: b.d, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ))}
+      </div>
+      <div className="bg-dots" aria-hidden="true" />
+      <motion.div className="bg-spot" style={{ background: spotlight }} aria-hidden="true" />
 
-      {/* ── Sticky mini-header — avatar, name, quick share once scrolled past hero ── */}
+      {/* ── Scroll progress bar ── */}
+      <motion.div className="scroll-progress" style={{ scaleX: progressSmooth }} />
+
+      {/* ── Sticky mini-header (phones/tablets) ── */}
       <AnimatePresence>
         {stickyVisible && (
           <motion.div
             className="sticky-head"
-            initial={{ y: -60, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -60, opacity: 0 }}
+            initial={{ y: -70, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -70, opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
           >
             {user.avatar
               ? <img src={user.avatar} alt="" className="sticky-head-av" />
-              : <div className="sticky-head-av" style={{background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",color:"#d7ff3f",fontWeight:800,fontSize:13}}>{user.name?.charAt(0)?.toUpperCase()||"?"}</div>}
+              : <div className="sticky-head-av" style={{background:"var(--chip)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--chip-fg)",fontWeight:800,fontSize:13}}>{user.name?.charAt(0)?.toUpperCase()||"?"}</div>}
             <span className="sticky-head-name">{user.name}</span>
-            <motion.button
-              className="sticky-head-share"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={()=>{ setShareOpen(true); track(user.username,"share"); }}
-              aria-label="Share"
-            >
+            <motion.button className="round-btn sm" whileTap={{ scale: 0.88 }} onClick={toggleTheme} aria-label="Toggle theme">
+              <i className={themeMode === "dark" ? "fas fa-sun" : "fas fa-moon"}/>
+            </motion.button>
+            <motion.button className="round-btn sm" whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }} onClick={openShare} aria-label="Share">
               <i className="fas fa-arrow-up-from-bracket"/>
             </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Theme background overlay + subtle dot-grid texture for depth ── */}
-      <div style={{position:"fixed",inset:0,background:theme.hero,zIndex:-1,opacity:.35,pointerEvents:"none"}}/>
-      <div style={{
-        position:"fixed",inset:0,zIndex:-1,pointerEvents:"none",
-        backgroundImage:"radial-gradient(rgba(10,10,10,.035) 1px, transparent 1px)",
-        backgroundSize:"22px 22px",
-      }}/>
-
-      {/* ── Share FAB (Apple-style, magnetic hover + Motion spring press) ── */}
-      <div style={{ position: "fixed", top: 16, right: 16, zIndex: 80 }} className={reveal("s-fab")}>
+      {/* ── Floating controls: theme + share ── */}
+      <motion.div
+        className="top-actions"
+        initial={{ opacity: 0, scale: 0.6 }} animate={ready ? { opacity: 1, scale: 1 } : {}}
+        transition={{ type: "spring", stiffness: 320, damping: 18, delay: 0.5 }}
+      >
         <Magnetic strength={0.3}>
-          <motion.button
-            className="sfab"
-            style={{ position: "static" }}
-            whileHover={{ scale: 1.06, backgroundColor: "rgba(255,255,255,.78)" }}
-            whileTap={{ scale: 0.9 }}
-            onClick={()=>{
-              setShareOpen(true);
-              track(user.username,"share");
-            }} aria-label="Share">
+          <motion.button className="round-btn" whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.88 }} onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme (T)">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.i
+                key={themeMode}
+                className={themeMode === "dark" ? "fas fa-sun" : "fas fa-moon"}
+                initial={{ rotate: -90, opacity: 0, scale: 0.5 }} animate={{ rotate: 0, opacity: 1, scale: 1 }} exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                transition={{ duration: 0.2 }}
+              />
+            </AnimatePresence>
+          </motion.button>
+        </Magnetic>
+        <Magnetic strength={0.3}>
+          <motion.button className="round-btn" whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.88 }} onClick={openShare} aria-label="Share" title="Share (S)">
             <i className="fas fa-arrow-up-from-bracket"/>
           </motion.button>
         </Magnetic>
-      </div>
+      </motion.div>
 
-      <main id="profile-main">
-        {/* ── Crawlable breadcrumb: real HTML links, visually hidden.
-            Backs up the BreadcrumbList structured data with actual markup,
-            and gives every profile page an internal link back to Home. ── */}
+      <main id="profile-main" className="shell">
         <nav aria-label="Breadcrumb" className="sr-only">
           <a href={origin}>Home</a> › <span aria-current="page">{user.name}</span>
         </nav>
 
-        {/* ── HERO SCREEN — photo, name, badges. Fills the first viewport;
-            everything else waits below the fold until scrolled into view. ── */}
-        <header className="hero-screen" ref={heroRef}>
+        {/* ── PROFILE COLUMN — photo, name, badges, bio, actions ── */}
+        <header className="profile-col" ref={heroRef}>
           {user.avatar ? (
             <motion.div className="hero" style={{ opacity: heroParallaxFade }}>
               <motion.img
@@ -1053,85 +1227,123 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
                 alt={`${user.name} profile photo`}
                 className="hero-img"
                 fetchpriority="high"
-                initial={{ scale: 1.12 }}
+                initial={{ scale: 1.14 }}
                 animate={{ scale: 1 }}
-                transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                 style={{ y: heroParallaxY, scale: heroParallaxScale }}
               />
               <div className="hero-fade"/>
             </motion.div>
           ) : (
             <div className="hero-ph">
-              <div className="av-ph">{user.name?.charAt(0)?.toUpperCase()||"?"}</div>
+              <motion.div
+                className="av-ph"
+                initial={{ scale: 0.5, opacity: 0 }} animate={ready ? { scale: 1, opacity: 1 } : {}}
+                transition={{ type: "spring", stiffness: 200, damping: 14 }}
+              >
+                {user.name?.charAt(0)?.toUpperCase()||"?"}
+              </motion.div>
             </div>
           )}
 
-          {/* ── Identity ── */}
-          <div className={`id-block${reveal("s1")}`}>
-            <h1 className={`pname${!loading ? " blur-in" : ""}`}>{user.name}</h1>
+          <div className="id-block">
+            <h1 className="pname" aria-label={user.name}>
+              <SplitName text={user.name} start={ready} />
+            </h1>
+
             <div className="badge-row">
-              {/* Live view counter — animates up from 0 once /api/track responds */}
               {viewCount !== null && (
-                <motion.span
-                  initial="hidden" animate={!loading ? "visible" : "hidden"} custom={-1} variants={popSpring}
-                >
-                  <span className="age-pill" style={{ cursor: "default" }} title="Profile views">
+                <motion.span initial="hidden" animate={ready ? "visible" : "hidden"} custom={0} variants={popSpring}>
+                  <span className="pill mono" title="Profile views">
                     <i className="fas fa-eye"/>
-                    <AnimatedCounter
-                      value={viewCount}
-                      formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)}
-                    />
+                    <AnimatedCounter value={viewCount} formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)} />
                   </span>
                 </motion.span>
               )}
-              {/* Age pill — click to toggle between age and birthday */}
               {userAge && user.dob && (
-                <motion.span
-                  initial="hidden" animate={!loading ? "visible" : "hidden"} custom={0} variants={popSpring}
-                >
+                <motion.span initial="hidden" animate={ready ? "visible" : "hidden"} custom={1} variants={popSpring}>
                   <span
                     key={showBirthday ? "bday" : "age"}
-                    className="age-pill agePop"
+                    className="pill click agePop"
+                    role="button" tabIndex={0}
                     onClick={() => setShowBirthday(v => !v)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setShowBirthday(v => !v); } }}
                     title={showBirthday ? "Show age" : "Show birthday"}
                   >
-                    <i className={showBirthday ? "fas fa-calendar-heart" : "fas fa-user"}/>
+                    <i className={showBirthday ? "fas fa-calendar-day" : "fas fa-user"}/>
                     {showBirthday
                       ? new Date(user.dob + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                       : `${userAge} y/o`}
                   </span>
                 </motion.span>
               )}
-              {/* Advanced badge pill */}
               {badgeLabel && (
-                <motion.span
-                  initial="hidden" animate={!loading ? "visible" : "hidden"} custom={1} variants={popSpring}
-                >
+                <motion.span initial="hidden" animate={ready ? "visible" : "hidden"} custom={2} variants={popSpring}>
                   <span className="badge-pill">
                     {badgeIcon && <i className={badgeIcon}/>}
                     {badgeLabel}
                   </span>
                 </motion.span>
               )}
-              {/* Itin score — compact, tap for full tier breakdown. Animates itself
-                  in the instant its score arrives, so it's never "late". Works
-                  for any profile: fetches live by user.username, nothing hardcoded. */}
+              {/* Itin score — compact, tap for the full tier breakdown */}
               <ItinScoreBadge username={user.username} />
-              {/* Dynamic Duo — same compact-pill + modal pattern as Itin Score */}
-              {duo && (
-                <DuoBadge duo={{...duo, me: {username: user.username, name: user.name, avatar: user.avatar}}} />
-              )}
             </div>
 
-            {/* About-me text lives on the first screen too, so it isn't just
-                badges over a big empty gap */}
-            {bio && <p className={`bio-text${!loading ? " blur-in" : ""}`} style={{animationDelay:".1s", marginBottom:0}}>{bio}</p>}
+            {bio && (
+              <motion.p
+                className="bio-text"
+                initial={{ opacity: 0, y: 16, filter: "blur(8px)" }}
+                animate={ready ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
+                transition={{ delay: 0.55, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {bio}
+              </motion.p>
+            )}
+
+            {isBirthday && (
+              <motion.div
+                className="bday-banner"
+                initial={{ opacity: 0, scale: 0.6 }} animate={ready ? { opacity: 1, scale: 1 } : {}}
+                transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.9 }}
+              >
+                <span aria-hidden="true">🎂</span> It's {user.name}'s birthday today
+              </motion.div>
+            )}
+
+            <motion.div
+              className="actions"
+              initial="hidden" animate={ready ? "visible" : "hidden"} custom={7} variants={fadeUp}
+            >
+              <motion.button
+                className="btn btn-primary" whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }}
+                onClick={() => { downloadVCard(user, pageUrl); track(user.username, "save_contact"); showToast("Contact saved"); }}
+              >
+                <i className="fas fa-address-card"/> Save contact
+              </motion.button>
+              <motion.button className="btn btn-ghost" whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} onClick={openShare}>
+                <i className="fas fa-arrow-up-from-bracket"/> Share
+              </motion.button>
+            </motion.div>
           </div>
         </header>
 
-        {/* ── CONTENT ── */}
+        {/* ── CONTENT COLUMN — stats, socials, interests, links, music ── */}
         <div className="content" ref={contentRef}>
           <article>
+            {(viewCount !== null || links.length > 0 || socials.length > 0) && (
+              <motion.section
+                className="stats" aria-label="Profile stats"
+                initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={0} variants={fadeUp}
+              >
+                <div className="stat">
+                  <b>{viewCount !== null ? <AnimatedCounter value={viewCount} formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)} /> : "—"}</b>
+                  <span>Views</span>
+                </div>
+                <div className="stat"><b><AnimatedCounter value={links.length} /></b><span>Links</span></div>
+                <div className="stat"><b><AnimatedCounter value={socials.length} /></b><span>Socials</span></div>
+              </motion.section>
+            )}
+
             {socials.length > 0 && (
               <section className="soc-row" aria-label={`${user.name}'s social profiles`}>
                 {socials.map(([pl,val],idx)=>{
@@ -1140,10 +1352,10 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
                     <motion.a
                       key={pl} href={m.u(val)} target="_blank" rel="me noopener noreferrer"
                       className="soc-btn" title={m.n} aria-label={`${user.name} on ${m.n}`}
-                      style={{color:m.c}}
-                      initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={idx} variants={popSpring}
-                      whileHover={{ y: -3, scale: 1.08, boxShadow: "0 6px 16px rgba(10,10,10,.08)", borderColor: "#0a0a0a" }}
-                      whileTap={{ scale: 0.93 }}
+                      style={{ color: m.c === "#ccc" ? "var(--fg)" : m.c }}
+                      initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={idx + 1} variants={popSpring}
+                      whileHover={{ y: -4, scale: 1.1, rotate: -4, borderColor: "rgba(128,128,128,.6)" }}
+                      whileTap={{ scale: 0.92 }}
                       onClick={()=>track(user.username, `social_${pl}`)}>
                       <i className={m.i}/>
                     </motion.a>
@@ -1152,30 +1364,56 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
               </section>
             )}
 
-            {(user.links||[]).length > 0 && (
-              <section className="links-container" aria-label={`${user.name}'s links`}>
+            <Marquee items={marqueeItems} />
+
+            {links.length > 0 && (
+              <section aria-label={`${user.name}'s links`}>
+                <div className="section-head">
+                  <span className="section-title">Links</span>
+                  <span className="section-count">{filteredLinks.length}</span>
+                  <span className="section-line" />
+                </div>
+
+                {showSearch && (
+                  <div className="search">
+                    <i className="fas fa-magnifying-glass" aria-hidden="true"/>
+                    <input
+                      ref={searchRef} type="search" value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search links" aria-label="Search links"
+                    />
+                    <kbd>/</kbd>
+                  </div>
+                )}
+
                 <div className="links">
-                  {user.links.map((lnk,i)=>(
-                    <TiltLink
-                      key={lnk.id||i}
-                      href={lnk.url}
-                      ariaLabel={lnk.title}
-                      index={{ animate: contentRevealed ? "visible" : "hidden", i }}
-                      onClick={()=>track(user.username,"link_click")}
-                    >
-                      <div className="lbtn-ic-wrap">
+                  <AnimatePresence mode="popLayout">
+                    {filteredLinks.map((lnk,i)=>(
+                      <TiltLink
+                        key={lnk.id||lnk.url||i}
+                        href={lnk.url}
+                        ariaLabel={lnk.title}
+                        index={{ animate: contentRevealed ? "visible" : "hidden", i }}
+                        onClick={()=>track(user.username,"link_click")}
+                      >
                         <div className="lbtn-ic">
                           {(lnk.icon?.startsWith("https://") || lnk.icon?.startsWith("data:"))
-                            ? <img src={lnk.icon} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",borderRadius:"10px"}} alt="" loading="lazy"/>
+                            ? <img src={lnk.icon} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} alt="" loading="lazy"/>
                             : lnk.icon?.startsWith("fas ") || lnk.icon?.startsWith("fab ")
                               ? <i className={lnk.icon}/>
-                              : <span style={{fontSize:17}}>{lnk.icon||"🔗"}</span>}
+                              : <span style={{fontSize:20}}>{lnk.icon||"🔗"}</span>}
                         </div>
-                      </div>
-                      <div className="lbtn-t">{lnk.title}</div>
-                      <div className="lbtn-a"><i className="fas fa-arrow-up-right-from-square"/></div>
-                    </TiltLink>
-                  ))}
+                        <div className="lbtn-body">
+                          <div className="lbtn-t">{lnk.title}</div>
+                          {hostOf(lnk.url) && <div className="lbtn-h">{hostOf(lnk.url)}</div>}
+                        </div>
+                        <div className="lbtn-a"><i className="fas fa-arrow-up-right"/></div>
+                      </TiltLink>
+                    ))}
+                  </AnimatePresence>
+                  {filteredLinks.length === 0 && (
+                    <p className="empty">No links match "{query}". Clear the search to see all links.</p>
+                  )}
                 </div>
               </section>
             )}
@@ -1188,35 +1426,41 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
                 viewport={{ once: true, amount: 0.3 }}
                 transition={{ type: "spring", stiffness: 260, damping: 24 }}
               >
-                <motion.div
-                  className="sp-card"
-                  whileHover={{ y: -2, boxShadow: "0 12px 28px rgba(10,10,10,.10)" }}
-                >
-                  <div className={`sp-trig${spOpen?" open":""}`}
-                    onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}>
+                <motion.div className="sp-card" whileHover={{ y: -2 }}>
+                  <div
+                    className={`sp-trig${spOpen?" open":""}`}
+                    onClick={()=>{setSpOpen(v=>!v);if(!spOpen)track(user.username,"spotify_play");}}
+                  >
                     <div className="sp-art"><i className="fas fa-music"/></div>
                     <div className="sp-meta">
-                      <div className="sp-eye"><span className="sp-dot"/>Favourite one</div>
+                      <div className="sp-eye">
+                        <span className={`eq${spOpen?" on":""}`} aria-hidden="true"><i/><i/><i/><i/></span>
+                        Favourite one
+                      </div>
                       <div className="sp-title">{user.favSong||"My Favourite Song"}</div>
                       {user.favArtist&&<div className="sp-artist">{user.favArtist}</div>}
                     </div>
-                    <div className="sp-right">
-                      <div className="sp-play-btn">
-                        <i className={spOpen?"fas fa-chevron-up":"fas fa-play"} style={{marginLeft:spOpen?0:2}}/>
-                      </div>
-                    </div>
+                    <motion.div className="sp-play-btn" whileTap={{ scale: 0.88 }} whileHover={{ scale: 1.1 }}>
+                      <i className={spOpen?"fas fa-chevron-up":"fas fa-play"} style={{marginLeft:spOpen?0:2}}/>
+                    </motion.div>
                   </div>
-                  {spOpen&&(
-                    <div className="sp-embed">
-                      <iframe
-                        src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0&autoplay=1`}
-                        width="100%" height="380" frameBorder="0"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy" style={{display:"block",width:"100%",maxWidth:"100%"}}
-                        title={`${user.favSong || "Favourite Song"} by ${user.favArtist || "Artist"}`}
-                      />
-                    </div>
-                  )}
+                  <AnimatePresence initial={false}>
+                    {spOpen&&(
+                      <motion.div
+                        className="sp-embed"
+                        initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      >
+                        <iframe
+                          src={`https://open.spotify.com/embed/track/${user.favSongTrackId}?utm_source=generator&theme=0&autoplay=1`}
+                          width="100%" height="380" frameBorder="0"
+                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                          loading="lazy" style={{display:"block",width:"100%",maxWidth:"100%"}}
+                          title={`${user.favSong || "Favourite Song"} by ${user.favArtist || "Artist"}`}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               </motion.div>
             )}
@@ -1233,14 +1477,35 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
             <div className="foot-attrib">
               Profile created with Linkitin — <a href={origin}>linkitin.site</a>
             </div>
+            <div className="hints" aria-hidden="true">
+              <span><kbd>S</kbd>Share</span>
+              <span><kbd>T</kbd>Theme</span>
+              {showSearch && <span><kbd>/</kbd>Search</span>}
+            </div>
           </motion.footer>
         </div>
       </main>
 
+      {/* ── Birthday confetti (once, shortly after the splash) ── */}
+      {isBirthday && ready && !reduce && <Confetti />}
+
+      {/* ── Toast ── */}
       <AnimatePresence>
-        {shareOpen && <ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)}/>}
+        {toast && (
+          <motion.div
+            className="toast" role="status"
+            initial={{ opacity: 0, y: 30, x: "-50%", scale: 0.9 }} animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }} exit={{ opacity: 0, y: 20, x: "-50%", scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 380, damping: 26 }}
+          >
+            <i className="fas fa-circle-check" style={{ color: "var(--chip-fg)" }}/> {toast}
+          </motion.div>
+        )}
       </AnimatePresence>
-    </>
+
+      <AnimatePresence>
+        {shareOpen && <ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)} onCopied={showToast}/>}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -1261,9 +1526,7 @@ export async function getServerSideProps({ params, req, res }) {
     );
 
     if (!raw) {
-      // Nonexistent username: return real HTTP 404 instead of a fake 200
-      // for a page that renders "not found" content — search engines
-      // should never treat this URL as a valid page to index.
+      // Nonexistent username: real HTTP 404 so search engines never index it
       if (res) res.statusCode = 404;
       return { props: { user: null, pageUrl, avatarUrl: `${base}/api/avatar/${usernameParam}`, siteUrl: base, robotsContent: "noindex, nofollow", isIndexable: false } };
     }
@@ -1312,11 +1575,6 @@ export async function getServerSideProps({ params, req, res }) {
     const avatarUrl = safeAvatar || `${base}/api/avatar/${usernameParam}`;
 
     // ── Indexability logic ────────────────────────────────────────────────
-    // Only flag a profile non-indexable when the data explicitly says so
-    // (private/deleted/suspended flags, or a recognized status string), or
-    // when the profile is too thin to be useful search content (no name,
-    // no bio, no links, no socials — nothing for a searcher to land on).
-    // Fields that don't exist on a given document simply default to "public".
     const statusStr   = raw.status ? String(raw.status).toLowerCase() : "";
     const isDeleted    = !!raw.deleted || statusStr === "deleted";
     const isSuspended  = !!raw.suspended || statusStr === "suspended" || statusStr === "banned";
@@ -1330,8 +1588,6 @@ export async function getServerSideProps({ params, req, res }) {
     const isIndexable = !isDeleted && !isSuspended && !isPrivate && hasAnyContent;
 
     if (isDeleted && res) res.statusCode = 410; // Gone
-    // Private/suspended/incomplete profiles still render normally (owner can
-    // view their own page) but are told not to be indexed.
     const robotsContent = isIndexable
       ? "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
       : "noindex, nofollow";
