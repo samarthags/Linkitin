@@ -11,7 +11,6 @@ import {
   useMotionTemplate,
   useSpring,
   useReducedMotion,
-  animate,
 } from "motion/react";
 import clientPromise from "../lib/mongodb";
 import ItinScoreBadge from "../components/ItinScoreBadge";
@@ -192,23 +191,6 @@ function downloadVCard(user, pageUrl) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
 }
 
-// ─── Animated number ticker ───────────────────────────────────────────────────
-function AnimatedCounter({ value, formatter, className, style }) {
-  const mv = useMotionValue(0);
-  const [display, setDisplay] = useState(formatter ? formatter(0) : "0");
-
-  useEffect(() => {
-    const controls = animate(mv, value, {
-      duration: 1.2,
-      ease: [0.16, 1, 0.3, 1],
-      onUpdate: (v) => setDisplay(formatter ? formatter(Math.round(v)) : Math.round(v)),
-    });
-    return () => controls.stop();
-  }, [value]);
-
-  return <span className={className} style={style}>{display}</span>;
-}
-
 // ─── Magnetic hover wrapper ───────────────────────────────────────────────────
 function Magnetic({ children, strength = 0.35 }) {
   const x = useMotionValue(0);
@@ -234,23 +216,30 @@ function Magnetic({ children, strength = 0.35 }) {
   );
 }
 
-// ─── Split-letter name reveal — letters rise out of a mask one by one ────────
+// ─── Split-letter name reveal: letters rise out of a mask, then jelly on hover ─
 function SplitName({ text, start }) {
   const words = String(text).split(" ");
+  const [free, setFree] = useState(false);
+  useEffect(() => {
+    if (!start) return;
+    const t = setTimeout(() => setFree(true), 1500 + String(text).length * 45);
+    return () => clearTimeout(t);
+  }, [start, text]);
   let n = 0;
   return (
     <>
       {words.map((w, wi) => (
-        <span key={wi} className="sw" aria-hidden="true">
+        <span key={wi} className={`sw${free ? " free" : ""}`} aria-hidden="true">
           {w.split("").map((ch, ci) => {
-            const d = 0.15 + (n++) * 0.04;
+            const d = 0.15 + (n++) * 0.045;
             return (
               <motion.span
                 key={ci}
                 className="sc"
-                initial={{ y: "115%", rotate: 6, opacity: 0 }}
-                animate={start ? { y: "0%", rotate: 0, opacity: 1 } : { y: "115%", rotate: 6, opacity: 0 }}
-                transition={{ delay: d, type: "spring", stiffness: 200, damping: 20 }}
+                initial={{ y: "115%", rotate: 8, opacity: 0, filter: "blur(6px)" }}
+                animate={start ? { y: "0%", rotate: 0, opacity: 1, filter: "blur(0px)" } : {}}
+                transition={{ delay: d, type: "spring", stiffness: 200, damping: 18 }}
+                whileHover={free ? { y: "-14%", scale: 1.12, rotate: ci % 2 ? 4 : -4, transition: { type: "spring", stiffness: 500, damping: 12 } } : undefined}
               >
                 {ch}
               </motion.span>
@@ -280,7 +269,7 @@ function Marquee({ items }) {
 }
 
 // ─── Spotlight + 3D tilt link card — border glow follows the cursor ──────────
-function TiltLink({ href, onClick, ariaLabel, children, index }) {
+function TiltLink({ href, onClick, ariaLabel, children, index, featured }) {
   const rX = useMotionValue(0);
   const rY = useMotionValue(0);
   const srX = useSpring(rX, { stiffness: 260, damping: 20, mass: 0.5 });
@@ -306,7 +295,7 @@ function TiltLink({ href, onClick, ariaLabel, children, index }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="lbtn"
+      className={`lbtn${featured ? " featured" : ""}`}
       aria-label={ariaLabel}
       onClick={onClick}
       initial="hidden"
@@ -405,7 +394,7 @@ function Confetti() {
 }
 
 // ─── Share sheet (bottom sheet on phones, centered card on desktop) ──────────
-function ShareSheet({ url, name, onClose, onCopied }) {
+function ShareSheet({ url, name, onClose, onCopied, onSave }) {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const enc = encodeURIComponent;
@@ -424,6 +413,7 @@ function ShareSheet({ url, name, onClose, onCopied }) {
   const opts = [
     {l:"Copy Link", ic:"fas fa-copy",          bg:"#0a0a0a",fg:"#d7ff3f",fn:doCopy},
     {l:"QR Code",   ic:"fas fa-qrcode",        bg:"#f3f3f0",fg:"#0a0a0a",fn:()=>setShowQr(v=>!v)},
+    {l:"Save Contact", ic:"fas fa-address-card", bg:"#f3f3f0",fg:"#0a0a0a",fn:()=>{ onSave && onSave(); onClose(); }},
     {l:"WhatsApp",  ic:"fab fa-whatsapp",       bg:"#f2fdf5",fg:"#25D366",fn:()=>window.open(`https://wa.me/?text=${enc("Visit "+name+"'s Profile: "+url)}`)},
     {l:"Instagram", ic:"fab fa-instagram",      bg:"#fef2f5",fg:"#E4405F",fn:()=>window.open(`https://www.instagram.com/?url=${enc(url)}`)},
     {l:"Snapchat",  ic:"fab fa-snapchat",       bg:"#fffce8",fg:"#c9a800",fn:()=>window.open(`https://www.snapchat.com/scan?attachmentUrl=${enc(url)}`)},
@@ -509,7 +499,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
   const [contentRevealed, setContentRevealed] = useState(false);
   const [viewCount,    setViewCount]    = useState(null);
   const [stickyVisible, setStickyVisible] = useState(false);
-  const [themeMode,    setThemeMode]    = useState("light");
+  const [showTop,      setShowTop]      = useState(false);
   const [query,        setQuery]        = useState("");
   const [toast,        setToast]        = useState("");
   const contentRef = useRef(null);
@@ -531,27 +521,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
     return () => window.removeEventListener("mousemove", mv);
   }, []);
 
-  // ── Theme: remember choice, otherwise follow the visitor's system setting ──
-  useEffect(() => {
-    let saved = null;
-    try { saved = localStorage.getItem("linkitin-theme"); } catch (_) {}
-    if (saved === "dark" || saved === "light") setThemeMode(saved);
-    else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setThemeMode("dark");
-  }, []);
-
-  useEffect(() => {
-    document.body.style.background = themeMode === "dark" ? "#0b0b0a" : "#fafaf7";
-    const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute("content", themeMode === "dark" ? "#0b0b0a" : "#fafaf7");
-  }, [themeMode]);
-
-  const toggleTheme = useCallback(() => {
-    setThemeMode(prev => {
-      const next = prev === "dark" ? "light" : "dark";
-      try { localStorage.setItem("linkitin-theme", next); } catch (_) {}
-      return next;
-    });
-  }, []);
+  useEffect(() => { document.body.style.background = "#fafaf7"; }, []);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -600,6 +570,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
 
   const { scrollYProgress: pageProgress } = useScroll();
   const progressSmooth = useSpring(pageProgress, { stiffness: 140, damping: 26, mass: 0.4 });
+  useMotionValueEvent(pageProgress, "change", (v) => setShowTop(v > 0.2));
 
   // ── Reveal below-the-fold content once scrolled into view ──
   useEffect(() => {
@@ -669,12 +640,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
       if (tag === "input" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "Escape") { setShareOpen(false); return; }
       if (e.key === "s" || e.key === "S") { e.preventDefault(); setShareOpen(true); if (user) track(user.username, "share"); }
-      else if (e.key === "t" || e.key === "T") { toggleTheme(); }
       else if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [user, toggleTheme]);
+  }, [user]);
 
   // ── SEO helpers ──
   const userAge   = user ? calcAge(user.dob) : null;
@@ -827,7 +797,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
   const ready = !loading;
 
   return (
-    <div className="page" data-theme={themeMode}>
+    <div className="page">
       <Head>
         {/* ── Primary SEO ── */}
         <title>{ptitle}</title>
@@ -841,7 +811,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
         {/* ── Viewport / Theme / PWA hints ── */}
         <meta name="viewport"           content="width=device-width,initial-scale=1,viewport-fit=cover"/>
         <meta name="theme-color"        content="#fafaf7"/>
-        <meta name="color-scheme"       content="light dark"/>
+        <meta name="color-scheme"       content="light"/>
         <meta name="mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -918,14 +888,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
             position:relative;min-height:100vh;background:var(--bg);color:var(--fg);
             transition:background .45s ease,color .45s ease;
           }
-          .page[data-theme="dark"]{
-            --bg:#0b0b0a; --fg:#f5f5ef; --muted:#9a9a8c; --soft:#d8d8cc;
-            --card:#151514; --card-2:#1d1d1b; --border:rgba(255,255,255,.10); --border-strong:rgba(255,255,255,.3);
-            --chip:#d7ff3f; --chip-fg:#0a0a0a; --glass:rgba(24,24,22,.62);
-            --spot:rgba(215,255,63,.13); --blob-a:rgba(215,255,63,.20); --blob-b:rgba(80,140,255,.22); --blob-c:rgba(255,90,150,.16);
-            --shadow:0 1px 3px rgba(0,0,0,.4); --shadow-lg:0 18px 40px rgba(0,0,0,.5);
-            --dots:rgba(255,255,255,.05); --img-dim:.95;
-          }
 
           .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 
@@ -961,15 +923,17 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
           .profile-col{display:flex;flex-direction:column;align-items:stretch;}
 
           /* Hero */
-          .hero{position:relative;width:100%;height:54vh;min-height:300px;max-height:460px;overflow:hidden;}
-          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;border-radius:0 0 32px 32px;filter:brightness(var(--img-dim));}
-          .hero-fade{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(to bottom,transparent 0%,transparent 48%,color-mix(in srgb,var(--fade) 30%,transparent) 68%,color-mix(in srgb,var(--fade) 80%,transparent) 88%,var(--fade) 100%);}
+          .hero{position:relative;width:100%;height:54vh;min-height:300px;max-height:460px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 58%,rgba(0,0,0,.55) 78%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0%,#000 58%,rgba(0,0,0,.55) 78%,transparent 100%);}
+          .hero-img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;position:relative;z-index:1;filter:brightness(var(--img-dim));}
+          .hero-fade{display:none;position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(to bottom,transparent 0%,transparent 48%,color-mix(in srgb,var(--fade) 30%,transparent) 68%,color-mix(in srgb,var(--fade) 80%,transparent) 88%,var(--fade) 100%);}
           .hero-ph{width:100%;height:46vh;min-height:260px;max-height:400px;display:flex;align-items:center;justify-content:center;position:relative;}
           .av-ph{width:120px;height:120px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;color:var(--chip-fg);box-shadow:0 0 0 8px var(--card-2);}
 
-          .id-block{text-align:center;padding:0 20px;position:relative;z-index:3;margin-top:-6px;}
+          .id-block{text-align:center;padding:0 20px;position:relative;z-index:3;margin-top:-36px;}
           .pname{font-size:clamp(34px,10vw,54px);font-family:'Archivo Black','Sora',sans-serif;font-weight:400;letter-spacing:-.015em;line-height:1.02;margin-bottom:14px;text-transform:uppercase;overflow-wrap:anywhere;}
           .sw{display:inline-block;white-space:nowrap;overflow:hidden;padding:.06em .02em .1em;vertical-align:top;margin-right:.28em;}
+          .sw.free{overflow:visible;}
+          .sc{cursor:default;}
           .sw:last-child{margin-right:0;}
           .sc{display:inline-block;will-change:transform;}
 
@@ -1072,6 +1036,21 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
           .hints{display:none;justify-content:center;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);font-weight:600;}
           .hints kbd{font-family:'JetBrains Mono',monospace;font-size:10.5px;border:1.5px solid var(--border-strong);border-radius:6px;padding:1px 6px;margin-right:5px;}
 
+          .name-line{display:block;height:6px;width:70px;margin:0 auto 16px;border-radius:6px;background:var(--accent);box-shadow:0 0 0 1.5px var(--fg);transform-origin:center;}
+          .lbtn.featured{background:linear-gradient(135deg,#fff 0%,#f6ffd2 100%);border-color:var(--border-strong);padding:16px 16px;}
+          .lbtn.featured .lbtn-ic{width:58px;height:58px;}
+          .lbtn-tag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--chip);color:var(--chip-fg);border-radius:999px;padding:2px 8px;margin-bottom:5px;}
+          @media(hover:hover){
+            .soc-btn::after{content:attr(data-label);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translate(-50%,4px);background:var(--chip);color:var(--chip-fg);font-size:11px;font-weight:700;padding:4px 9px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+            .soc-btn:hover::after{opacity:1;transform:translate(-50%,0);}
+          }
+          .to-top{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:95;width:44px;height:44px;border-radius:50%;background:var(--chip);color:var(--chip-fg);border:none;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;box-shadow:var(--shadow-lg);}
+          .foot{text-align:center;padding:4px 0 0;}
+          .foot-cta{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--soft);background:var(--card);border:1.5px solid var(--border);border-radius:999px;padding:6px 6px 6px 13px;box-shadow:var(--shadow);transition:border-color .25s,box-shadow .25s;}
+          .foot-cta i{font-size:11px;}
+          .foot-cta b{background:var(--chip);color:var(--chip-fg);border-radius:999px;padding:3px 9px;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+          .foot-cta:hover{background:var(--card);color:var(--fg);border-color:var(--border-strong);box-shadow:var(--shadow-lg);}
+
           /* Toast */
           .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:1200;background:var(--chip);color:var(--chip-fg);font-size:13px;font-weight:800;padding:11px 20px;border-radius:999px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg);}
 
@@ -1114,7 +1093,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
             .hero{height:440px;max-height:none;min-height:0;}
             .hero-img{border-radius:0;}
             .hero-ph{height:300px;}
-            .id-block{margin-top:-10px;padding:0 28px;}
+            .id-block{margin-top:-34px;padding:0 28px;}
             .pname{font-size:clamp(36px,3.4vw,48px);}
             .sticky-head{display:none;}
             .content{padding:6px 0 80px;max-width:none;}
@@ -1178,9 +1157,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
               ? <img src={user.avatar} alt="" className="sticky-head-av" />
               : <div className="sticky-head-av" style={{background:"var(--chip)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--chip-fg)",fontWeight:800,fontSize:13}}>{user.name?.charAt(0)?.toUpperCase()||"?"}</div>}
             <span className="sticky-head-name">{user.name}</span>
-            <motion.button className="round-btn sm" whileTap={{ scale: 0.88 }} onClick={toggleTheme} aria-label="Toggle theme">
-              <i className={themeMode === "dark" ? "fas fa-sun" : "fas fa-moon"}/>
-            </motion.button>
             <motion.button className="round-btn sm" whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }} onClick={openShare} aria-label="Share">
               <i className="fas fa-arrow-up-from-bracket"/>
             </motion.button>
@@ -1194,18 +1170,6 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
         initial={{ opacity: 0, scale: 0.6 }} animate={ready ? { opacity: 1, scale: 1 } : {}}
         transition={{ type: "spring", stiffness: 320, damping: 18, delay: 0.5 }}
       >
-        <Magnetic strength={0.3}>
-          <motion.button className="round-btn" whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.88 }} onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme (T)">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.i
-                key={themeMode}
-                className={themeMode === "dark" ? "fas fa-sun" : "fas fa-moon"}
-                initial={{ rotate: -90, opacity: 0, scale: 0.5 }} animate={{ rotate: 0, opacity: 1, scale: 1 }} exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
-                transition={{ duration: 0.2 }}
-              />
-            </AnimatePresence>
-          </motion.button>
-        </Magnetic>
         <Magnetic strength={0.3}>
           <motion.button className="round-btn" whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.88 }} onClick={openShare} aria-label="Share" title="Share (S)">
             <i className="fas fa-arrow-up-from-bracket"/>
@@ -1250,16 +1214,13 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
             <h1 className="pname" aria-label={user.name}>
               <SplitName text={user.name} start={ready} />
             </h1>
+            <motion.span
+              className="name-line" aria-hidden="true"
+              initial={{ scaleX: 0, opacity: 0 }} animate={ready ? { scaleX: 1, opacity: 1 } : {}}
+              transition={{ delay: 0.95, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            />
 
             <div className="badge-row">
-              {viewCount !== null && (
-                <motion.span initial="hidden" animate={ready ? "visible" : "hidden"} custom={0} variants={popSpring}>
-                  <span className="pill mono" title="Profile views">
-                    <i className="fas fa-eye"/>
-                    <AnimatedCounter value={viewCount} formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)} />
-                  </span>
-                </motion.span>
-              )}
               {userAge && user.dob && (
                 <motion.span initial="hidden" animate={ready ? "visible" : "hidden"} custom={1} variants={popSpring}>
                   <span
@@ -1310,39 +1271,12 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
               </motion.div>
             )}
 
-            <motion.div
-              className="actions"
-              initial="hidden" animate={ready ? "visible" : "hidden"} custom={7} variants={fadeUp}
-            >
-              <motion.button
-                className="btn btn-primary" whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }}
-                onClick={() => { downloadVCard(user, pageUrl); track(user.username, "save_contact"); showToast("Contact saved"); }}
-              >
-                <i className="fas fa-address-card"/> Save contact
-              </motion.button>
-              <motion.button className="btn btn-ghost" whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} onClick={openShare}>
-                <i className="fas fa-arrow-up-from-bracket"/> Share
-              </motion.button>
-            </motion.div>
           </div>
         </header>
 
         {/* ── CONTENT COLUMN — stats, socials, interests, links, music ── */}
         <div className="content" ref={contentRef}>
           <article>
-            {(viewCount !== null || links.length > 0 || socials.length > 0) && (
-              <motion.section
-                className="stats" aria-label="Profile stats"
-                initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={0} variants={fadeUp}
-              >
-                <div className="stat">
-                  <b>{viewCount !== null ? <AnimatedCounter value={viewCount} formatter={(n) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)} /> : "—"}</b>
-                  <span>Views</span>
-                </div>
-                <div className="stat"><b><AnimatedCounter value={links.length} /></b><span>Links</span></div>
-                <div className="stat"><b><AnimatedCounter value={socials.length} /></b><span>Socials</span></div>
-              </motion.section>
-            )}
 
             {socials.length > 0 && (
               <section className="soc-row" aria-label={`${user.name}'s social profiles`}>
@@ -1351,7 +1285,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
                   return(
                     <motion.a
                       key={pl} href={m.u(val)} target="_blank" rel="me noopener noreferrer"
-                      className="soc-btn" title={m.n} aria-label={`${user.name} on ${m.n}`}
+                      className="soc-btn" data-label={m.n} aria-label={`${user.name} on ${m.n}`}
                       style={{ color: m.c === "#ccc" ? "var(--fg)" : m.c }}
                       initial="hidden" animate={contentRevealed ? "visible" : "hidden"} custom={idx + 1} variants={popSpring}
                       whileHover={{ y: -4, scale: 1.1, rotate: -4, borderColor: "rgba(128,128,128,.6)" }}
@@ -1393,6 +1327,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
                         key={lnk.id||lnk.url||i}
                         href={lnk.url}
                         ariaLabel={lnk.title}
+                        featured={i === 0 && !query.trim() && filteredLinks.length > 1}
                         index={{ animate: contentRevealed ? "visible" : "hidden", i }}
                         onClick={()=>track(user.username,"link_click")}
                       >
@@ -1404,6 +1339,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
                               : <span style={{fontSize:20}}>{lnk.icon||"🔗"}</span>}
                         </div>
                         <div className="lbtn-body">
+                          {i === 0 && !query.trim() && filteredLinks.length > 1 && <span className="lbtn-tag">Featured</span>}
                           <div className="lbtn-t">{lnk.title}</div>
                           {hostOf(lnk.url) && <div className="lbtn-h">{hostOf(lnk.url)}</div>}
                         </div>
@@ -1473,13 +1409,11 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.5 }}
           >
-            <a href="/" className="foot-cta">Create your own profile — it's free</a>
-            <div className="foot-attrib">
-              Profile created with Linkitin — <a href={origin}>linkitin.site</a>
-            </div>
+            <motion.a href="/" className="foot-cta" whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+              <i className="fas fa-wand-magic-sparkles"/> Create your profile <b>Free</b>
+            </motion.a>
             <div className="hints" aria-hidden="true">
               <span><kbd>S</kbd>Share</span>
-              <span><kbd>T</kbd>Theme</span>
               {showSearch && <span><kbd>/</kbd>Search</span>}
             </div>
           </motion.footer>
@@ -1488,6 +1422,20 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
 
       {/* ── Birthday confetti (once, shortly after the splash) ── */}
       {isBirthday && ready && !reduce && <Confetti />}
+
+      <AnimatePresence>
+        {showTop && (
+          <motion.button
+            className="to-top" aria-label="Back to top"
+            initial={{ opacity: 0, scale: 0.5, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.5, y: 20 }}
+            whileHover={{ y: -3 }} whileTap={{ scale: 0.88 }}
+            transition={{ type: "spring", stiffness: 380, damping: 22 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" })}
+          >
+            <i className="fas fa-arrow-up"/>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* ── Toast ── */}
       <AnimatePresence>
@@ -1503,7 +1451,7 @@ export default function ProfilePage({ user, pageUrl, avatarUrl, siteUrl, robotsC
       </AnimatePresence>
 
       <AnimatePresence>
-        {shareOpen && <ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)} onCopied={showToast}/>}
+        {shareOpen && <ShareSheet url={pageUrl} name={user.name} onClose={()=>setShareOpen(false)} onCopied={showToast} onSave={()=>{ downloadVCard(user, pageUrl); track(user.username, "save_contact"); showToast("Contact saved"); }}/>}
       </AnimatePresence>
     </div>
   );
