@@ -1,6 +1,3 @@
-// styles/theme.js
-// Shared design tokens — TeenStore-inspired light theme.
-// Import these instead of hardcoding hex values anywhere new.
 export const THEME = {
   cream:  "#fafaf7",
   white:  "#ffffff",
